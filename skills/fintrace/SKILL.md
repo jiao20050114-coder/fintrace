@@ -12,7 +12,7 @@ Use this skill when the user asks to create, audit, update, or review a financia
 1. Treat the user's natural-language request as the brief.
 2. Create a signal workspace with `fintrace from-brief`.
 3. Read the generated `*.agent_brief.md`.
-4. Locate primary and high-reliability sources when the generated `sources.json` has no URLs.
+4. Prefer `fintrace source-pack` for common source sets; otherwise locate primary and high-reliability sources manually.
 5. If the agent has semantically read the material, write structured evidence JSON and import it with `fintrace import-evidence`.
 6. Use `fintrace ingest` when FinTrace should fetch configured sources and screen them automatically.
 7. Show candidate evidence before applying it unless the user explicitly asked for automatic updates.
@@ -26,6 +26,14 @@ Use `fintrace ...` when the CLI is installed. If it is not on `PATH`, run comman
 
 ```bash
 PYTHONPATH=src python -m fintrace.cli ...
+```
+
+List and create source packs:
+
+```bash
+fintrace source-pack list
+fintrace source-pack create dymon-asia --out path/to/dymon-asia.sources.json
+fintrace source-pack create sec-us --ticker NVDA --cik 1045810 --out path/to/nvda.sources.json
 ```
 
 Create a signal:
@@ -120,7 +128,7 @@ fintrace graph path/to/signal.json --out path/to/graph.html
 - Use counter evidence generously; a useful signal is allowed to be wrong quickly.
 - In agent environments, use the user's own words as the starting brief and preserve them in `*.agent_brief.md`.
 - Let the agent handle semantic reading. Use `import-evidence` to persist the agent's structured conclusions.
-- If sources are missing, find source URLs first, update `sources.json`, then run ingest.
+- If sources are missing, try `source-pack list` first; otherwise find source URLs, update `sources.json`, then run ingest.
 - For any language not covered by built-in terms, add user-language `support_terms`, `counter_terms`, and `finance_terms` before ingesting.
 - Do not present FinTrace output as investment advice.
 

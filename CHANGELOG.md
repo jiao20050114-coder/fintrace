@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0
+
+- Added `fintrace source-pack list/show/create`.
+- Added built-in source packs for `sec-us`, `hkex`, `nvda`, `dymon-asia`, and generic `fund-manager`.
+- Added source-pack tests and skill guidance to prefer source packs for common workflows.
+
 ## 0.7.0
 
 - Added first-class `reason` storage on evidence items.

@@ -59,6 +59,7 @@ Then run:
 ```bash
 fintrace demo --out-dir work/demo
 fintrace from-brief "Track Dymon Asia AUM, fund performance, and regulatory risk" --out-dir work/dymon-asia
+fintrace source-pack create dymon-asia --out work/dymon-asia/dymon-asia.sources.json
 fintrace status work/dymon-asia/dymon-asia.signal.json
 fintrace import-evidence work/dymon-asia/dymon-asia.signal.json --file examples/agent_evidence.example.json --dry-run
 fintrace extract work/dymon-asia/dymon-asia.signal.json --file examples/nvda_update.txt --source "Example update"
@@ -83,6 +84,22 @@ This creates:
 - `dymon-asia.agent_brief.md`
 
 An agent such as Codex, Claude, or WorkBuddy can read the generated agent brief, locate high-reliability sources, update `sources.json`, then run `fintrace ingest`.
+
+For common source sets, use a built-in source pack:
+
+```bash
+fintrace source-pack list
+fintrace source-pack create dymon-asia --out work/dymon-asia/dymon-asia.sources.json
+```
+
+For US SEC issuer filings:
+
+```bash
+fintrace source-pack create sec-us \
+  --ticker NVDA \
+  --cik 1045810 \
+  --out work/nvda/nvda.sources.json
+```
 
 If the user already supplied source URLs:
 
@@ -256,6 +273,26 @@ Example:
 The ingest ranking combines source reliability, signal relevance, configured terms, and extracted evidence score. Like `extract`, it previews results by default and only writes to the ledger with `--apply`.
 
 FinTrace is Unicode-first and can ingest text in any language. The built-in extractor includes common English, Chinese, Japanese, and Korean finance terms. For other languages or specialized domains, pass custom terms in the CLI or source registry. For deeper cross-language interpretation, pair this workflow with an LLM in the agent layer.
+
+## Source Packs
+
+`fintrace source-pack` provides reusable source registry templates so users do not need to hand-write `sources.json`.
+
+```bash
+fintrace source-pack list
+fintrace source-pack show nvda
+fintrace source-pack create nvda --out work/nvda/nvda.sources.json
+```
+
+Built-in packs include:
+
+- `sec-us`: SEC EDGAR Atom feed, parameterized by `--ticker` and `--cik`
+- `hkex`: HKEX RSS and HKEXnews sources
+- `nvda`: NVIDIA investor relations and newsroom RSS
+- `dymon-asia`: Dymon Asia official pages and fund-manager guidance
+- `fund-manager`: generic asset manager source template
+
+Source packs may include `agent_instructions`. Agents should read those instructions before ingesting or importing evidence.
 
 ## Agent And Skill Mode
 

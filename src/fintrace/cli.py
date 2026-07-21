@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 from fintrace.agent_import import import_agent_evidence, load_agent_evidence
@@ -16,6 +17,7 @@ from fintrace.ledger import (
 )
 from fintrace.schema import EvidenceKind, Signal, WatchItem
 from fintrace.source_ingest import ingest_sources, load_sources
+from fintrace.source_packs import get_source_pack, list_source_packs, render_source_pack, write_source_pack
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -112,6 +114,25 @@ def main(argv: list[str] | None = None) -> int:
     import_parser.add_argument("--allow-duplicates", action="store_true", help="Import duplicate evidence items.")
     import_parser.add_argument("--evaluate", action="store_true", help="Evaluate signal status after import.")
     import_parser.set_defaults(func=cmd_import_evidence)
+
+    pack_parser = subparsers.add_parser("source-pack", help="List, show, or create built-in source registries.")
+    pack_subparsers = pack_parser.add_subparsers(dest="source_pack_command", required=True)
+
+    pack_list_parser = pack_subparsers.add_parser("list", help="List available source packs.")
+    pack_list_parser.set_defaults(func=cmd_source_pack_list)
+
+    pack_show_parser = pack_subparsers.add_parser("show", help="Show a source pack registry.")
+    pack_show_parser.add_argument("pack_id")
+    pack_show_parser.add_argument("--ticker")
+    pack_show_parser.add_argument("--cik")
+    pack_show_parser.set_defaults(func=cmd_source_pack_show)
+
+    pack_create_parser = pack_subparsers.add_parser("create", help="Write a source pack registry to a JSON file.")
+    pack_create_parser.add_argument("pack_id")
+    pack_create_parser.add_argument("--out", required=True)
+    pack_create_parser.add_argument("--ticker")
+    pack_create_parser.add_argument("--cik")
+    pack_create_parser.set_defaults(func=cmd_source_pack_create)
 
     demo_parser = subparsers.add_parser("demo", help="Create a runnable NVDA demo signal.")
     demo_parser.add_argument("--out-dir", default=".")
@@ -306,6 +327,28 @@ def cmd_import_evidence(args: argparse.Namespace) -> None:
             f"{result.update_event.current_status.value}"
         )
         print(f"Why: {result.update_event.summary}")
+
+
+def cmd_source_pack_list(args: argparse.Namespace) -> None:
+    for pack in list_source_packs():
+        required = f" requires: {', '.join(pack.required_params)}" if pack.required_params else ""
+        print(f"{pack.id}: {pack.description}{required}")
+
+
+def cmd_source_pack_show(args: argparse.Namespace) -> None:
+    registry = render_source_pack(args.pack_id, ticker=args.ticker, cik=args.cik)
+    print(json.dumps(registry, indent=2, ensure_ascii=False))
+
+
+def cmd_source_pack_create(args: argparse.Namespace) -> None:
+    registry = render_source_pack(args.pack_id, ticker=args.ticker, cik=args.cik)
+    write_source_pack(args.out, registry)
+    pack = get_source_pack(args.pack_id)
+    print(f"Wrote source pack '{pack.id}' to {args.out}")
+    if registry.get("agent_instructions"):
+        print("Agent instructions:")
+        for item in registry["agent_instructions"]:
+            print(f"- {item}")
 
 
 def cmd_demo(args: argparse.Namespace) -> None:

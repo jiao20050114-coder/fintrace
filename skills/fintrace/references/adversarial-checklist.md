@@ -16,6 +16,7 @@ Use this checklist before telling the user a FinTrace run is complete.
 - Secondary sources were used only when primary sources were unavailable or linked.
 - Source reliability in `sources.json` is plausible and not uniformly high.
 - `exclude_terms` remove obvious noise such as sponsored posts, rumors, events, and generic marketing.
+- Built-in source packs were used when applicable, and any `agent_instructions` were followed.
 
 ## Workflow Integrity
 
@@ -32,3 +33,4 @@ Use this checklist before telling the user a FinTrace run is complete.
 - The same evidence item appears multiple times.
 - The report has no counter evidence.
 - The source registry contains no primary or high-reliability source candidates.
+- A generic source pack was used even though a more specific pack was available.
