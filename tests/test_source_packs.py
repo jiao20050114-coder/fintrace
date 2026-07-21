@@ -1,10 +1,21 @@
 import json
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
 from fintrace.source_packs import get_source_pack, list_source_packs, render_source_pack, write_source_pack
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _cli_env() -> dict[str, str]:
+    env = os.environ.copy()
+    src_path = str(PROJECT_ROOT / "src")
+    env["PYTHONPATH"] = f"{src_path}{os.pathsep}{env['PYTHONPATH']}" if env.get("PYTHONPATH") else src_path
+    return env
 
 
 def test_list_source_packs_contains_core_packs():
@@ -88,6 +99,7 @@ def test_source_pack_cli_create(tmp_path):
         check=True,
         capture_output=True,
         text=True,
+        env=_cli_env(),
     )
 
     assert "Wrote source pack 'sec-us'" in result.stdout
@@ -108,6 +120,7 @@ def test_source_pack_cli_errors_are_user_friendly():
         ],
         capture_output=True,
         text=True,
+        env=_cli_env(),
     )
 
     assert result.returncode != 0

@@ -1,8 +1,19 @@
 import json
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 import yaml
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _cli_env() -> dict[str, str]:
+    env = os.environ.copy()
+    src_path = str(PROJECT_ROOT / "src")
+    env["PYTHONPATH"] = f"{src_path}{os.pathsep}{env['PYTHONPATH']}" if env.get("PYTHONPATH") else src_path
+    return env
 
 
 def test_agent_evidence_schema_and_example_are_aligned():
@@ -46,6 +57,7 @@ def test_import_evidence_dry_run_does_not_write_signal(tmp_path):
             "Demand is improving",
         ],
         check=True,
+        env=_cli_env(),
     )
     before = signal.read_text(encoding="utf-8")
     evidence.write_text(
@@ -78,6 +90,7 @@ def test_import_evidence_dry_run_does_not_write_signal(tmp_path):
         check=True,
         capture_output=True,
         text=True,
+        env=_cli_env(),
     )
 
     assert "Dry run" in result.stdout
@@ -101,6 +114,7 @@ def test_ingest_empty_source_registry_warns(tmp_path):
             "Demand is improving",
         ],
         check=True,
+        env=_cli_env(),
     )
 
     result = subprocess.run(
@@ -116,6 +130,7 @@ def test_ingest_empty_source_registry_warns(tmp_path):
         check=True,
         capture_output=True,
         text=True,
+        env=_cli_env(),
     )
 
     assert "No sources configured" in result.stderr
