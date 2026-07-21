@@ -13,6 +13,7 @@ from fintrace.ledger import (
     save_signal,
 )
 from fintrace.schema import EvidenceKind, Signal, WatchItem
+from fintrace.source_ingest import ingest_sources, load_sources
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -72,6 +73,16 @@ def main(argv: list[str] | None = None) -> int:
     extract_parser.add_argument("--min-score", type=int, default=1)
     extract_parser.add_argument("--apply", action="store_true", help="Append extracted candidates to the signal card.")
     extract_parser.set_defaults(func=cmd_extract)
+
+    ingest_parser = subparsers.add_parser("ingest", help="Fetch configured sources and extract relevant evidence.")
+    ingest_parser.add_argument("path")
+    ingest_parser.add_argument("--sources", required=True, help="JSON source registry path.")
+    ingest_parser.add_argument("--query", help="Extra topic, company, ticker, or keyword filter.")
+    ingest_parser.add_argument("--max-items", type=int, default=12)
+    ingest_parser.add_argument("--per-source-limit", type=int, default=8)
+    ingest_parser.add_argument("--min-score", type=int, default=1)
+    ingest_parser.add_argument("--apply", action="store_true", help="Append ingested evidence to the signal card.")
+    ingest_parser.set_defaults(func=cmd_ingest)
 
     demo_parser = subparsers.add_parser("demo", help="Create a runnable NVDA demo signal.")
     demo_parser.add_argument("--out-dir", default=".")
@@ -171,6 +182,49 @@ def cmd_extract(args: argparse.Namespace) -> None:
             )
         save_signal(signal, args.path)
         print(f"Applied {len(candidates)} evidence candidates to {args.path}")
+
+
+def cmd_ingest(args: argparse.Namespace) -> None:
+    signal = load_signal(args.path)
+    sources = load_sources(args.sources)
+    items = ingest_sources(
+        signal,
+        sources,
+        query=args.query,
+        max_items=args.max_items,
+        per_source_limit=args.per_source_limit,
+        min_score=args.min_score,
+    )
+
+    if not items:
+        print("No relevant evidence found from configured sources.")
+        return
+
+    for index, item in enumerate(items, start=1):
+        candidate = item.candidate
+        print(
+            f"[{index}] {candidate.kind.value} | weight {item.adjusted_weight:.1f} "
+            f"| relevance {item.relevance_score} | source {item.source.name} ({item.source.reliability:.2f})"
+        )
+        print(f"Document: {item.document_title}")
+        if item.document_url:
+            print(f"URL: {item.document_url}")
+        print(candidate.text)
+        print()
+
+    if args.apply:
+        for item in items:
+            add_evidence(
+                signal,
+                text=item.candidate.text,
+                source=f"{item.source.name}: {item.document_title}",
+                kind=item.candidate.kind,
+                url=item.document_url,
+                observed_at=None,
+                weight=item.adjusted_weight,
+            )
+        save_signal(signal, args.path)
+        print(f"Applied {len(items)} ingested evidence items to {args.path}")
 
 
 def cmd_demo(args: argparse.Namespace) -> None:

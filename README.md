@@ -60,6 +60,7 @@ Then run:
 fintrace demo --out-dir examples
 fintrace status examples/nvda_ai_demand.signal.json
 fintrace extract examples/nvda_ai_demand.signal.json --file examples/nvda_update.txt --source "Example update"
+fintrace ingest examples/nvda_ai_demand.signal.json --sources examples/sources.example.json
 fintrace report examples/nvda_ai_demand.signal.json --out examples/nvda_ai_demand.report.md
 fintrace graph examples/nvda_ai_demand.signal.json --out examples/nvda_ai_demand.graph.html
 ```
@@ -125,6 +126,23 @@ fintrace extract examples/robotics.signal.json \
   --apply
 ```
 
+Automatically fetch and screen configured sources:
+
+```bash
+fintrace ingest examples/robotics.signal.json \
+  --sources examples/sources.example.json \
+  --query "robotics component orders"
+```
+
+Apply screened evidence after review:
+
+```bash
+fintrace ingest examples/robotics.signal.json \
+  --sources examples/sources.example.json \
+  --query "robotics component orders" \
+  --apply
+```
+
 Render a report:
 
 ```bash
@@ -160,6 +178,38 @@ The model is intentionally simple so analysts can inspect and challenge it. Futu
 By default it prints candidate evidence without changing the signal card. Add `--apply` to append the candidates.
 
 The current extractor is rule-based and dependency-free. It looks for finance terms plus support or counter-evidence language, then assigns a conservative weight. This keeps the workflow inspectable and makes it easy to replace the extraction backend with an LLM later.
+
+## Automated Source Ingest
+
+`fintrace ingest` moves one step earlier in the workflow: instead of asking the user to find text first, it fetches configured information sources and screens them before extraction.
+
+Each source can define:
+
+- `kind`: `feed` or `page`
+- `url`: RSS/Atom feed, webpage, or local file path
+- `reliability`: source quality score from `0.0` to `1.0`
+- `include_terms`: terms that raise relevance
+- `exclude_terms`: terms that reject noisy documents
+
+Example:
+
+```json
+{
+  "sources": [
+    {
+      "id": "company-ir",
+      "name": "Company Investor Relations",
+      "kind": "feed",
+      "url": "https://example.com/rss",
+      "reliability": 0.9,
+      "include_terms": ["revenue", "guidance", "orders"],
+      "exclude_terms": ["sponsored"]
+    }
+  ]
+}
+```
+
+The ingest ranking combines source reliability, signal relevance, configured terms, and extracted evidence score. Like `extract`, it previews results by default and only writes to the ledger with `--apply`.
 
 ## Why This Exists
 

@@ -1,0 +1,22 @@
+{
+  "sources": [
+    {
+      "id": "demo-ai-infra-feed",
+      "name": "Demo AI Infrastructure Feed",
+      "kind": "feed",
+      "url": "demo_ai_infra_feed.xml",
+      "reliability": 0.85,
+      "include_terms": ["AI", "capex", "revenue", "guidance"],
+      "exclude_terms": ["rumor", "hiring"]
+    },
+    {
+      "id": "demo-risk-feed",
+      "name": "Demo Regulatory Risk Feed",
+      "kind": "feed",
+      "url": "demo_risk_feed.xml",
+      "reliability": 0.75,
+      "include_terms": ["restriction", "sales", "revenue"],
+      "exclude_terms": ["sponsored"]
+    }
+  ]
+}

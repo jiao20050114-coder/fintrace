@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Demo AI Infrastructure Feed</title>
+    <item>
+      <title>Cloud capex and AI infrastructure demand remain strong</title>
+      <link>https://example.com/cloud-capex-ai-demand</link>
+      <description>Revenue growth accelerated as cloud customers increased AI infrastructure capex. Data center demand remained strong and management raised guidance for the next quarter.</description>
+    </item>
+    <item>
+      <title>General software hiring update</title>
+      <link>https://example.com/software-hiring</link>
+      <description>Hiring plans improved, but the update does not discuss AI infrastructure demand, revenue, or capex.</description>
+    </item>
+  </channel>
+</rss>

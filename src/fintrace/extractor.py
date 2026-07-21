@@ -79,6 +79,15 @@ FINANCIAL_TERMS = {
     "sales",
 }
 
+NEGATION_PATTERNS = (
+    "does not",
+    "do not",
+    "did not",
+    "not discuss",
+    "not indicate",
+    "no evidence",
+)
+
 
 @dataclass(frozen=True)
 class EvidenceCandidate:
@@ -133,6 +142,8 @@ def extract_evidence_candidates(
         elif counter_score > support_score:
             kind = EvidenceKind.COUNTER
         else:
+            kind = EvidenceKind.NEUTRAL
+        if kind == EvidenceKind.SUPPORT and any(pattern in normalized.lower() for pattern in NEGATION_PATTERNS):
             kind = EvidenceKind.NEUTRAL
 
         weight = min(2.0, 0.7 + (0.2 * score))

@@ -27,3 +27,11 @@ def test_strip_html_removes_script_content():
 
     assert "Revenue growth improved" in text
     assert "ignore" not in text
+
+
+def test_negated_support_sentence_is_neutral():
+    candidates = extract_evidence_candidates(
+        "The update does not discuss AI infrastructure demand, revenue, or capex."
+    )
+
+    assert candidates[0].kind == EvidenceKind.NEUTRAL
