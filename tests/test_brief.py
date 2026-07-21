@@ -1,4 +1,4 @@
-from fintrace.brief import create_brief_pack, infer_include_terms, infer_subject, infer_topic
+from fintrace.brief import create_brief_pack, create_source_plan, infer_include_terms, infer_subject, infer_topic
 
 
 def test_infer_subject_from_latin_entity():
@@ -57,4 +57,19 @@ def test_create_brief_pack_writes_workspace(tmp_path):
     assert (tmp_path / "dymon-asia.signal.json").exists()
     assert (tmp_path / "dymon-asia.sources.json").exists()
     assert (tmp_path / "dymon-asia.agent_brief.md").exists()
+    assert (tmp_path / "dymon-asia.source_plan.md").exists()
+    assert "agent_source_plan" in pack.sources
     assert pack.sources["sources"][0]["name"] == "Official"
+
+
+def test_create_source_plan_generates_queries_and_markdown(tmp_path):
+    out = tmp_path / "plan.md"
+    plan = create_source_plan(
+        "Track Dymon Asia AUM, fund performance, subscriptions, redemptions, and regulatory risk",
+        out=out,
+    )
+
+    assert plan.subject == "Dymon Asia"
+    assert any("AUM performance fund factsheet" in query for query in plan.search_queries)
+    assert "Search Queries" in out.read_text(encoding="utf-8")
+    assert "import-evidence" in plan.markdown

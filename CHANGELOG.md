@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+
+- Added `fintrace source-plan` to generate agent-readable source discovery, triage, and evidence-import plans from natural-language briefs.
+- `fintrace from-brief` now writes a `*.source_plan.md` file and embeds structured `agent_source_plan` metadata in `sources.json`.
+- Improved `page` ingest with HTML title parsing, boilerplate skipping, same-domain/local link discovery, and linked-page screening.
+- Added tests for page link discovery, linked-page evidence extraction, source-plan generation, and CLI source-plan output.
+
 ## 0.8.1
 
 - Hardened source-pack CLI error handling for missing parameters and unknown packs.

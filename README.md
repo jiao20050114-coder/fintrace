@@ -59,6 +59,7 @@ Then run:
 ```bash
 fintrace demo --out-dir work/demo
 fintrace from-brief "Track Dymon Asia AUM, fund performance, and regulatory risk" --out-dir work/dymon-asia
+fintrace source-plan "Track Dymon Asia AUM, fund performance, and regulatory risk" --out work/dymon-asia/source_plan.md
 fintrace source-pack create dymon-asia --out work/dymon-asia/dymon-asia.sources.json
 fintrace status work/dymon-asia/dymon-asia.signal.json
 fintrace import-evidence work/dymon-asia/dymon-asia.signal.json --file examples/agent_evidence.example.json --dry-run
@@ -82,8 +83,16 @@ This creates:
 - `dymon-asia.signal.json`
 - `dymon-asia.sources.json`
 - `dymon-asia.agent_brief.md`
+- `dymon-asia.source_plan.md`
 
-An agent such as Codex, Claude, or WorkBuddy can read the generated agent brief, locate high-reliability sources, update `sources.json`, then run `fintrace ingest`.
+An agent such as Codex, Claude, or WorkBuddy can read the generated agent brief and source plan, locate high-reliability sources, update `sources.json`, then run `fintrace ingest`.
+
+To generate only the search and source-triage plan:
+
+```bash
+fintrace source-plan "Track Dymon Asia AUM, fund performance, and regulatory risk" \
+  --out work/dymon-asia/dymon-asia.source_plan.md
+```
 
 For common source sets, use a built-in source pack:
 
@@ -272,6 +281,8 @@ Example:
 
 The ingest ranking combines source reliability, signal relevance, configured terms, and extracted evidence score. Like `extract`, it previews results by default and only writes to the ledger with `--apply`.
 
+For `page` sources, FinTrace parses the HTML title, skips common navigation and footer regions, extracts cleaner page text, discovers relevant same-domain or local links, and screens a small number of linked pages. This makes official IR, newsroom, exchange, and fund pages more useful while keeping the behavior inspectable.
+
 FinTrace is Unicode-first and can ingest text in any language. The built-in extractor includes common English, Chinese, Japanese, and Korean finance terms. For other languages or specialized domains, pass custom terms in the CLI or source registry. For deeper cross-language interpretation, pair this workflow with an LLM in the agent layer.
 
 ## Source Packs
@@ -288,7 +299,7 @@ Built-in packs include:
 
 - `sec-us`: SEC EDGAR Atom feed, parameterized by `--ticker` and `--cik`
 - `hkex`: HKEX RSS and HKEXnews sources
-- `nvda`: NVIDIA investor relations and newsroom RSS
+- `nvda`: NVIDIA investor relations and newsroom HTML pages
 - `dymon-asia`: Dymon Asia official pages and fund-manager guidance
 - `fund-manager`: generic asset manager source template
 
@@ -300,6 +311,7 @@ FinTrace is designed to work inside Codex, Claude, WorkBuddy, and similar agent 
 
 Use `from-brief` as the first step. It turns the user request into a small workspace containing a signal card, source registry scaffold, and agent instructions. The agent can then:
 
+- Read `*.source_plan.md` for search queries, source priority, and rejection rules.
 - Search for primary and high-reliability sources.
 - Add source URLs to the generated `sources.json`.
 - Run `fintrace ingest` to screen those sources.

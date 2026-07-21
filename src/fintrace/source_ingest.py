@@ -4,12 +4,38 @@ import json
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urldefrag, urljoin, urlparse
 from urllib.request import Request, urlopen
 
 from fintrace.extractor import EvidenceCandidate, _contains_term, extract_evidence_candidates, strip_html
-from fintrace.schema import EvidenceKind, Signal
+from fintrace.schema import Signal
+
+PAGE_LINK_TERMS = {
+    "10-k",
+    "10-q",
+    "8-k",
+    "annual report",
+    "announcement",
+    "earnings",
+    "factsheet",
+    "filing",
+    "financial results",
+    "financial statements",
+    "investor presentation",
+    "monthly report",
+    "quarterly report",
+    "results",
+    "transcript",
+    "业绩",
+    "公告",
+    "年报",
+    "月报",
+    "基金",
+    "财报",
+    "监管",
+}
 
 
 @dataclass(frozen=True)
@@ -64,6 +90,13 @@ class IngestedEvidence:
     adjusted_weight: float
 
 
+@dataclass(frozen=True)
+class PageLink:
+    title: str
+    url: str
+    score: int
+
+
 def load_sources(path: str | Path) -> list[Source]:
     source_path = Path(path)
     data = json.loads(source_path.read_text(encoding="utf-8"))
@@ -86,7 +119,7 @@ def ingest_sources(
 
     for source in sources:
         try:
-            documents = fetch_documents(source, limit=per_source_limit)
+            documents = fetch_documents(source, limit=per_source_limit, query_terms=query_terms)
         except (OSError, ET.ParseError, UnicodeError, ValueError) as exc:
             if warnings is not None:
                 warnings.append(f"Skipped source '{source.name}' ({source.url}): {exc}")
@@ -129,11 +162,71 @@ def ingest_sources(
     return _dedupe_ingested(ingested)[:max_items]
 
 
-def fetch_documents(source: Source, *, limit: int = 8) -> list[Document]:
+def fetch_documents(source: Source, *, limit: int = 8, query_terms: set[str] | None = None) -> list[Document]:
     raw = _read_url_or_file(source.url)
     if source.kind == "page":
-        return [Document(title=source.name, url=source.url, text=strip_html(raw), source=source)]
+        return parse_page(raw, source=source, limit=limit, query_terms=query_terms or set())
     return parse_feed(raw, source=source, limit=limit)
+
+
+def parse_page(
+    html_text: str,
+    *,
+    source: Source,
+    limit: int = 8,
+    query_terms: set[str] | None = None,
+) -> list[Document]:
+    parser = _PageParser()
+    parser.feed(html_text)
+    parser.close()
+    page_title = parser.title or source.name
+    main_text = _clean_page_text(parser.text_parts)
+    documents = [Document(title=page_title, url=source.url, text=main_text, source=source)]
+
+    terms = _page_discovery_terms(source=source, query_terms=query_terms or set())
+    links = discover_page_links(parser.links, base_url=source.url, terms=terms, limit=max(0, limit - 1))
+    for link in links:
+        try:
+            linked_raw = _read_url_or_file(link.url)
+        except (OSError, UnicodeError, ValueError):
+            continue
+        linked_parser = _PageParser()
+        linked_parser.feed(linked_raw)
+        linked_parser.close()
+        linked_text = _clean_page_text(linked_parser.text_parts) or strip_html(linked_raw)
+        documents.append(
+            Document(
+                title=linked_parser.title or link.title,
+                url=link.url,
+                text=linked_text,
+                source=source,
+            )
+        )
+    return documents[:limit]
+
+
+def discover_page_links(
+    raw_links: list[tuple[str, str]],
+    *,
+    base_url: str,
+    terms: set[str],
+    limit: int = 6,
+) -> list[PageLink]:
+    links: list[PageLink] = []
+    seen: set[str] = set()
+    for href, label in raw_links:
+        resolved = _resolve_link(base_url, href)
+        if not resolved or resolved in seen:
+            continue
+        if not _is_fetchable_page_link(base_url, resolved):
+            continue
+        score = _score_link(label=label, url=resolved, terms=terms)
+        if score <= 0:
+            continue
+        seen.add(resolved)
+        links.append(PageLink(title=label or resolved, url=resolved, score=score))
+    links.sort(key=lambda item: (item.score, len(item.title)), reverse=True)
+    return links[:limit]
 
 
 def parse_feed(xml_text: str, *, source: Source, limit: int = 8) -> list[Document]:
@@ -222,6 +315,83 @@ def _encoding_from_content_type(content_type: str) -> str:
     return match.group(1) if match else "utf-8"
 
 
+def _page_discovery_terms(*, source: Source, query_terms: set[str]) -> set[str]:
+    terms = set(PAGE_LINK_TERMS)
+    terms.update(query_terms)
+    terms.update(item.lower() for item in source.include_terms)
+    terms.update(item.lower() for item in source.support_terms)
+    terms.update(item.lower() for item in source.counter_terms)
+    terms.update(item.lower() for item in source.finance_terms)
+    return {term for term in terms if term}
+
+
+def _resolve_link(base_url: str, href: str) -> str | None:
+    href = href.strip()
+    if not href or href.startswith(("#", "mailto:", "tel:", "javascript:")):
+        return None
+    href, _fragment = urldefrag(href)
+    parsed_base = urlparse(base_url)
+    parsed_href = urlparse(href)
+    if parsed_href.scheme:
+        return href
+    if parsed_base.scheme in {"http", "https"}:
+        return urljoin(base_url, href)
+    if parsed_base.scheme == "file":
+        return str((Path(parsed_base.path).parent / href).resolve())
+    return str((Path(base_url).parent / href).resolve())
+
+
+def _is_fetchable_page_link(base_url: str, url: str) -> bool:
+    parsed_base = urlparse(base_url)
+    parsed = urlparse(url)
+    if parsed.scheme in {"http", "https"}:
+        if parsed_base.scheme in {"http", "https"} and parsed.netloc != parsed_base.netloc:
+            return False
+    elif parsed.scheme not in {"", "file"}:
+        return False
+
+    path = parsed.path.lower()
+    if re.search(r"\.(jpg|jpeg|png|gif|webp|svg|zip|xlsx?|pptx?|docx?|mp4|mov|mp3)$", path):
+        return False
+    if re.search(r"\.(pdf)$", path):
+        return False
+    return True
+
+
+def _score_link(*, label: str, url: str, terms: set[str]) -> int:
+    haystack = f"{label} {url}".lower()
+    score = 0
+    score += sum(1 for term in terms if _contains_term(haystack, term.lower()))
+    if re.search(r"(investor|ir|filing|results|earnings|factsheet|announcement|report)", haystack):
+        score += 2
+    if re.search(r"(login|privacy|terms|cookie|careers|contact|subscribe)", haystack):
+        score -= 3
+    return score
+
+
+def _clean_page_text(parts: list[str]) -> str:
+    raw_lines = []
+    for part in parts:
+        for line in part.splitlines():
+            cleaned = re.sub(r"\s+", " ", line).strip()
+            if cleaned:
+                raw_lines.append(cleaned)
+
+    lines: list[str] = []
+    seen: set[str] = set()
+    for line in raw_lines:
+        lowered = line.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        if len(line) < 3:
+            continue
+        if re.fullmatch(r"[\W_]+", line):
+            continue
+        lines.append(line)
+    return " ".join(lines)
+
+
 def _dedupe_ingested(items: list[IngestedEvidence]) -> list[IngestedEvidence]:
     seen: set[str] = set()
     deduped: list[IngestedEvidence] = []
@@ -232,3 +402,68 @@ def _dedupe_ingested(items: list[IngestedEvidence]) -> list[IngestedEvidence]:
         seen.add(key)
         deduped.append(item)
     return deduped
+
+
+class _PageParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.title = ""
+        self.text_parts: list[str] = []
+        self.links: list[tuple[str, str]] = []
+        self._skip_depth = 0
+        self._section_skip_depth = 0
+        self._in_title = False
+        self._current_href: str | None = None
+        self._current_anchor_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attrs_dict = {key.lower(): value for key, value in attrs if value is not None}
+        if tag in {"script", "style", "noscript", "svg"}:
+            self._skip_depth += 1
+            return
+        if tag in {"nav", "header", "footer", "aside", "form"}:
+            self._section_skip_depth += 1
+            return
+        if tag == "title":
+            self._in_title = True
+            return
+        if self._skip_depth or self._section_skip_depth:
+            return
+        if tag == "a":
+            self._current_href = attrs_dict.get("href")
+            self._current_anchor_parts = []
+        if tag in {"p", "div", "section", "article", "li", "tr", "h1", "h2", "h3", "h4", "br"}:
+            self.text_parts.append("\n")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style", "noscript", "svg"} and self._skip_depth:
+            self._skip_depth -= 1
+            return
+        if tag in {"nav", "header", "footer", "aside", "form"} and self._section_skip_depth:
+            self._section_skip_depth -= 1
+            return
+        if tag == "title":
+            self._in_title = False
+            return
+        if self._skip_depth or self._section_skip_depth:
+            return
+        if tag == "a" and self._current_href:
+            label = re.sub(r"\s+", " ", " ".join(self._current_anchor_parts)).strip()
+            self.links.append((self._current_href, label))
+            self._current_href = None
+            self._current_anchor_parts = []
+        if tag in {"p", "div", "section", "article", "li", "tr", "h1", "h2", "h3", "h4"}:
+            self.text_parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth or self._section_skip_depth:
+            return
+        cleaned = re.sub(r"\s+", " ", data).strip()
+        if not cleaned:
+            return
+        if self._in_title:
+            self.title = f"{self.title} {cleaned}".strip()
+            return
+        if self._current_href is not None:
+            self._current_anchor_parts.append(cleaned)
+        self.text_parts.append(cleaned)

@@ -135,3 +135,26 @@ def test_ingest_empty_source_registry_warns(tmp_path):
 
     assert "No sources configured" in result.stderr
     assert "No relevant evidence" in result.stdout
+
+
+def test_source_plan_cli_writes_agent_plan(tmp_path):
+    out = tmp_path / "source_plan.md"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "fintrace.cli",
+            "source-plan",
+            "Track Dymon Asia AUM and regulatory risk",
+            "--out",
+            str(out),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=_cli_env(),
+    )
+
+    assert "Wrote source plan" in result.stdout
+    assert "Search Queries" in out.read_text(encoding="utf-8")

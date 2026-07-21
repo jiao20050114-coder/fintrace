@@ -16,6 +16,18 @@ class BriefPack:
     include_terms: list[str]
     sources: dict[str, object]
     agent_brief: str
+    source_plan: str
+
+
+@dataclass(frozen=True)
+class SourcePlan:
+    subject: str
+    topic: str
+    ticker: str | None
+    include_terms: list[str]
+    search_queries: list[str]
+    registry_metadata: dict[str, object]
+    markdown: str
 
 
 DEFAULT_WATCHLIST = [
@@ -89,7 +101,18 @@ def create_brief_pack(
         ticker=inferred_ticker,
         watchlist=list(DEFAULT_WATCHLIST),
     )
-    sources = build_source_registry(source_urls or [], include_terms=include_terms)
+    source_plan = build_source_plan(
+        user_brief=brief,
+        subject=subject,
+        topic=inferred_topic,
+        ticker=inferred_ticker,
+        include_terms=include_terms,
+    )
+    sources = build_source_registry(
+        source_urls or [],
+        include_terms=include_terms,
+        source_plan=source_plan.registry_metadata,
+    )
     agent_brief = render_agent_brief(
         user_brief=brief,
         signal=signal,
@@ -106,6 +129,7 @@ def create_brief_pack(
         encoding="utf-8",
     )
     (target_dir / f"{inferred_slug}.agent_brief.md").write_text(agent_brief, encoding="utf-8")
+    (target_dir / f"{inferred_slug}.source_plan.md").write_text(source_plan.markdown, encoding="utf-8")
 
     return BriefPack(
         signal=signal,
@@ -113,6 +137,7 @@ def create_brief_pack(
         include_terms=include_terms,
         sources=sources,
         agent_brief=agent_brief,
+        source_plan=source_plan.markdown,
     )
 
 
@@ -203,7 +228,12 @@ def _extract_chinese_terms(text: str) -> set[str]:
     return candidates
 
 
-def build_source_registry(source_urls: list[str], *, include_terms: list[str]) -> dict[str, object]:
+def build_source_registry(
+    source_urls: list[str],
+    *,
+    include_terms: list[str],
+    source_plan: dict[str, object] | None = None,
+) -> dict[str, object]:
     sources = []
     for index, raw in enumerate(source_urls, start=1):
         name, url = parse_source_url(raw, index=index)
@@ -218,7 +248,10 @@ def build_source_registry(source_urls: list[str], *, include_terms: list[str]) -
                 "exclude_terms": ["rumor", "sponsored", "advertisement"],
             }
         )
-    return {"sources": sources}
+    registry: dict[str, object] = {"sources": sources}
+    if source_plan:
+        registry["agent_source_plan"] = source_plan
+    return registry
 
 
 def parse_source_url(raw: str, *, index: int) -> tuple[str, str]:
@@ -251,6 +284,7 @@ def render_agent_brief(
 
 - Signal file: `{slug}.signal.json`
 - Sources file: `{slug}.sources.json`
+- Source plan: `{slug}.source_plan.md`
 - Topic: `{signal.topic or "n/a"}`
 - Ticker: `{signal.ticker or "n/a"}`
 - Hypothesis: {signal.hypothesis}
@@ -258,6 +292,8 @@ def render_agent_brief(
 ## Source Plan
 
 {sources_note}
+
+Read `{slug}.source_plan.md` before searching. Use its queries, acceptance rules, and rejection rules to decide which URLs belong in `{slug}.sources.json`.
 
 Prioritize sources in this order:
 
@@ -282,6 +318,201 @@ Apply only after review:
 fintrace ingest {slug}.signal.json --sources {slug}.sources.json --apply
 ```
 """
+
+
+def create_source_plan(
+    brief: str,
+    *,
+    out: str | Path | None = None,
+    title: str | None = None,
+    topic: str | None = None,
+    ticker: str | None = None,
+) -> SourcePlan:
+    subject = title or infer_subject(brief)
+    inferred_topic = topic or infer_topic(brief, subject)
+    inferred_ticker = ticker or infer_ticker(brief)
+    include_terms = infer_include_terms(brief, subject=subject, ticker=inferred_ticker)
+    plan = build_source_plan(
+        user_brief=brief,
+        subject=subject,
+        topic=inferred_topic,
+        ticker=inferred_ticker,
+        include_terms=include_terms,
+    )
+    if out is not None:
+        target = Path(out)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(plan.markdown, encoding="utf-8")
+    return plan
+
+
+def build_source_plan(
+    *,
+    user_brief: str,
+    subject: str,
+    topic: str,
+    ticker: str | None,
+    include_terms: list[str],
+) -> SourcePlan:
+    search_queries = build_search_queries(
+        user_brief=user_brief,
+        subject=subject,
+        topic=topic,
+        ticker=ticker,
+        include_terms=include_terms,
+    )
+    registry_metadata = {
+        "subject": subject,
+        "topic": topic,
+        "ticker": ticker,
+        "search_queries": search_queries,
+        "source_priority": [
+            "official company, fund, exchange, issuer, or regulator sources",
+            "filings, annual reports, financial statements, factsheets, announcements, and transcripts",
+            "reputable financial news that names sources or links primary material",
+            "secondary commentary only when it reveals primary evidence",
+        ],
+        "reject_if": [
+            "no source URL is available",
+            "claim is promotional without factual metrics",
+            "article repeats unsourced market rumor",
+            "source cannot be distinguished from advertising or sponsored content",
+        ],
+    }
+    markdown = render_source_plan_markdown(
+        user_brief=user_brief,
+        subject=subject,
+        topic=topic,
+        ticker=ticker,
+        include_terms=include_terms,
+        search_queries=search_queries,
+    )
+    return SourcePlan(
+        subject=subject,
+        topic=topic,
+        ticker=ticker,
+        include_terms=include_terms,
+        search_queries=search_queries,
+        registry_metadata=registry_metadata,
+        markdown=markdown,
+    )
+
+
+def build_search_queries(
+    *,
+    user_brief: str,
+    subject: str,
+    topic: str,
+    ticker: str | None,
+    include_terms: list[str],
+) -> list[str]:
+    core_terms = " ".join(include_terms[:4])
+    queries = [
+        f"{subject} official investor relations financial results",
+        f"{subject} annual report announcement transcript factsheet",
+        f"{subject} risk disclosure regulator filing",
+        f"{subject} {topic} reputable financial news primary source",
+    ]
+    if ticker:
+        queries.extend(
+            [
+                f"{ticker} SEC 10-K 10-Q 8-K filing",
+                f"{ticker} earnings release investor presentation transcript",
+            ]
+        )
+    if any(term in topic.lower() for term in ["asset", "fund", "management"]):
+        queries.extend(
+            [
+                f"{subject} AUM performance fund factsheet",
+                f"{subject} subscriptions redemptions drawdown regulatory risk",
+            ]
+        )
+    if re.search(r"[\u4e00-\u9fff]", user_brief):
+        queries.extend(
+            [
+                f"{subject} 公告 财报 监管 风险",
+                f"{subject} 基金 表现 资金流入 资金流出",
+            ]
+        )
+    if core_terms:
+        queries.append(f"{subject} {core_terms}")
+    return _dedupe_preserve_order(queries)[:10]
+
+
+def render_source_plan_markdown(
+    *,
+    user_brief: str,
+    subject: str,
+    topic: str,
+    ticker: str | None,
+    include_terms: list[str],
+    search_queries: list[str],
+) -> str:
+    queries = "\n".join(f"- {query}" for query in search_queries)
+    terms = ", ".join(include_terms[:24])
+    return f"""# FinTrace Agent Source Plan: {subject}
+
+## User Input
+
+{user_brief}
+
+## Target
+
+- Subject: `{subject}`
+- Topic: `{topic}`
+- Ticker: `{ticker or "n/a"}`
+
+## Search Queries
+
+{queries}
+
+## Source Triage
+
+Use sources in this order:
+
+1. Official company, fund, exchange, issuer, or regulator pages.
+2. Filings, annual reports, financial statements, factsheets, announcements, and transcripts.
+3. Reputable financial news that names sources or links primary materials.
+4. Secondary commentary only when it reveals primary evidence.
+
+Reject sources when:
+
+- No durable source URL is available.
+- The claim is promotional language without factual metrics.
+- The item repeats market rumor without named sourcing.
+- The page is advertising, sponsored content, or mostly navigation.
+
+## Registry Update
+
+Add chosen URLs to `sources.json` with:
+
+- `kind`: `feed` for RSS/Atom, otherwise `page`
+- `reliability`: `0.9-1.0` for regulators/filings, `0.75-0.9` for official company or fund pages, lower for secondary news
+- `include_terms`: keep the most relevant terms below
+
+Suggested include terms:
+
+{terms}
+
+## Evidence Workflow
+
+1. Run `fintrace ingest ... --sources ...` to screen configured feeds and pages.
+2. For PDFs, portals, tables, or pages needing semantic reading, have the agent read the source and write `agent_evidence.json`.
+3. Preview with `fintrace import-evidence ... --dry-run`.
+4. Import with `fintrace import-evidence ... --evaluate` after review or explicit user instruction.
+"""
+
+
+def _dedupe_preserve_order(items: list[str]) -> list[str]:
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for item in items:
+        normalized = re.sub(r"\s+", " ", item).strip()
+        key = normalized.lower()
+        if normalized and key not in seen:
+            seen.add(key)
+            deduped.append(normalized)
+    return deduped
 
 
 def slugify(value: str) -> str:

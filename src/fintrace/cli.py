@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from fintrace.agent_import import import_agent_evidence, load_agent_evidence
-from fintrace.brief import create_brief_pack
+from fintrace.brief import create_brief_pack, create_source_plan
 from fintrace.extractor import extract_evidence_candidates, read_source_text
 from fintrace.ledger import (
     add_evidence,
@@ -106,6 +106,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional source URL, or NAME=URL. Can be repeated.",
     )
     brief_parser.set_defaults(func=cmd_from_brief)
+
+    plan_parser = subparsers.add_parser("source-plan", help="Create an agent source discovery and triage plan.")
+    plan_parser.add_argument("brief", help="User request or research brief.")
+    plan_parser.add_argument("--out", required=True, help="Where to write the source plan Markdown file.")
+    plan_parser.add_argument("--title")
+    plan_parser.add_argument("--topic")
+    plan_parser.add_argument("--ticker")
+    plan_parser.set_defaults(func=cmd_source_plan)
 
     import_parser = subparsers.add_parser("import-evidence", help="Import structured evidence produced by an agent or LLM.")
     import_parser.add_argument("path")
@@ -307,7 +315,26 @@ def cmd_from_brief(args: argparse.Namespace) -> None:
     print(f"Signal: {target_dir / f'{pack.slug}.signal.json'}")
     print(f"Sources: {target_dir / f'{pack.slug}.sources.json'}")
     print(f"Agent brief: {target_dir / f'{pack.slug}.agent_brief.md'}")
+    print(f"Source plan: {target_dir / f'{pack.slug}.source_plan.md'}")
     print(f"Include terms: {', '.join(pack.include_terms[:12])}")
+
+
+def cmd_source_plan(args: argparse.Namespace) -> None:
+    plan = create_source_plan(
+        args.brief,
+        out=args.out,
+        title=args.title,
+        topic=args.topic,
+        ticker=args.ticker,
+    )
+    print(f"Wrote source plan: {args.out}")
+    print(f"Subject: {plan.subject}")
+    print(f"Topic: {plan.topic}")
+    if plan.ticker:
+        print(f"Ticker: {plan.ticker}")
+    print("Search queries:")
+    for query in plan.search_queries[:6]:
+        print(f"- {query}")
 
 
 def cmd_import_evidence(args: argparse.Namespace) -> None:

@@ -2,9 +2,12 @@ from fintrace.schema import Signal, WatchItem
 from fintrace.source_ingest import (
     Source,
     build_query_terms,
+    discover_page_links,
+    fetch_documents,
     ingest_sources,
     load_sources,
     parse_feed,
+    parse_page,
     score_relevance,
 )
 
@@ -131,6 +134,98 @@ def test_ingest_sources_fetches_local_feed(tmp_path):
     assert items[0].source.name == "Demo Feed"
     assert items[0].document_url == "https://example.com/capex"
     assert items[0].adjusted_weight > 1.0
+
+
+def test_parse_page_filters_boilerplate_and_discovers_relevant_links(tmp_path):
+    linked = tmp_path / "results.html"
+    linked.write_text(
+        """
+        <html><head><title>Quarterly Results</title></head>
+        <body><article><h1>Revenue growth improved</h1>
+        <p>Revenue growth accelerated as guidance increased.</p></article></body></html>
+        """,
+        encoding="utf-8",
+    )
+    index = tmp_path / "index.html"
+    index.write_text(
+        """
+        <html><head><title>Investor Relations</title></head>
+        <body>
+          <nav>Careers Contact Subscribe</nav>
+          <main>
+            <h1>Investor Relations</h1>
+            <p>Data center demand remains a core investor topic.</p>
+            <a href="results.html">Quarterly financial results</a>
+          </main>
+          <footer>Privacy Terms</footer>
+        </body></html>
+        """,
+        encoding="utf-8",
+    )
+    source = Source(
+        id="ir",
+        name="IR",
+        url=str(index),
+        kind="page",
+        reliability=0.9,
+        include_terms=["revenue", "guidance", "results"],
+    )
+
+    documents = fetch_documents(source, limit=3, query_terms={"revenue", "guidance"})
+
+    assert [document.title for document in documents] == ["Investor Relations", "Quarterly Results"]
+    assert "Careers Contact Subscribe" not in documents[0].text
+    assert "Revenue growth accelerated" in documents[1].text
+
+
+def test_ingest_page_can_extract_from_discovered_link(tmp_path):
+    linked = tmp_path / "earnings.html"
+    linked.write_text(
+        """
+        <html><head><title>Earnings Release</title></head>
+        <body><article><p>Revenue growth accelerated as AI demand improved.</p></article></body></html>
+        """,
+        encoding="utf-8",
+    )
+    index = tmp_path / "index.html"
+    index.write_text(
+        """
+        <html><body>
+          <p>Investor relations home.</p>
+          <a href="earnings.html">Earnings release and financial results</a>
+        </body></html>
+        """,
+        encoding="utf-8",
+    )
+    signal = Signal(title="AI Demand", hypothesis="AI demand supports revenue growth")
+    source = Source(
+        id="ir",
+        name="IR",
+        url=str(index),
+        kind="page",
+        reliability=0.9,
+        include_terms=["earnings", "revenue", "AI"],
+    )
+
+    items = ingest_sources(signal, [source], query="earnings revenue", max_items=3)
+
+    assert any(item.document_title == "Earnings Release" for item in items)
+    assert any("Revenue growth accelerated" in item.candidate.text for item in items)
+
+
+def test_discover_page_links_rejects_cross_domain_and_assets():
+    links = discover_page_links(
+        [
+            ("https://example.com/investors/results.html", "Financial results"),
+            ("https://other.example.com/results.html", "Financial results"),
+            ("https://example.com/logo.png", "Financial results image"),
+        ],
+        base_url="https://example.com/",
+        terms={"results"},
+        limit=5,
+    )
+
+    assert [link.url for link in links] == ["https://example.com/investors/results.html"]
 
 
 def test_load_sources_resolves_relative_paths(tmp_path):
