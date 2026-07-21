@@ -27,6 +27,21 @@ def test_infer_include_terms_removes_stopwords():
     assert "Track" not in terms
 
 
+def test_infer_include_terms_extracts_clean_chinese_research_terms():
+    terms = infer_include_terms(
+        "帮我跟踪 Dymon Asia 的 AUM、基金表现、资金流入流出和监管风险，重点关注支持或削弱平台实力的证据",
+        subject="Dymon Asia",
+        ticker=None,
+    )
+
+    assert "基金表现" in terms
+    assert "资金流入流出" in terms
+    assert "监管风险" in terms
+    assert "平台实力" in terms
+    assert "帮我跟踪" not in terms
+    assert "弱平台实力的证据" not in terms
+
+
 def test_create_brief_pack_writes_workspace(tmp_path):
     pack = create_brief_pack(
         "Track Dymon Asia AUM, fund performance, and regulatory risk",

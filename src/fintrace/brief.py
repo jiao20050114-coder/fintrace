@@ -49,6 +49,19 @@ STOPWORDS = {
     "with",
 }
 
+CHINESE_STOP_TERMS = {
+    "帮我",
+    "跟踪",
+    "分析",
+    "研究",
+    "关注",
+    "重点",
+    "支持",
+    "削弱",
+    "证据",
+    "以及",
+}
+
 
 def create_brief_pack(
     brief: str,
@@ -164,10 +177,26 @@ def infer_include_terms(brief: str, *, subject: str, ticker: str | None) -> list
         for term in re.findall(r"[A-Za-z0-9][A-Za-z0-9&.-]{2,}", text)
         if term.lower() not in STOPWORDS
     }
-    for chinese in re.findall(r"[\u4e00-\u9fff]{2,8}", text):
-        terms.add(chinese)
+    terms.update(_extract_chinese_terms(text))
     terms.update({"revenue", "guidance", "risk", "filing", "announcement", "AUM"})
     return sorted(terms, key=lambda item: (item.lower(), item))
+
+
+def _extract_chinese_terms(text: str) -> set[str]:
+    normalized = re.sub(r"[，。；;,.]", "、", text)
+    normalized = re.sub(r"(重点关注|帮我|请|需要|围绕|关于|支持或削弱)", "、", normalized)
+    normalized = re.sub(r"[的和与及]|以及", "、", normalized)
+    candidates = set()
+    for raw in normalized.split("、"):
+        for chunk in re.findall(r"[\u4e00-\u9fff]{2,12}", raw):
+            cleaned = chunk.strip()
+            for stop in CHINESE_STOP_TERMS:
+                cleaned = cleaned.replace(stop, "")
+            if 2 <= len(cleaned) <= 12 and cleaned not in CHINESE_STOP_TERMS:
+                candidates.add(cleaned)
+    if "平台实力" in text:
+        candidates.add("平台实力")
+    return candidates
 
 
 def build_source_registry(source_urls: list[str], *, include_terms: list[str]) -> dict[str, object]:
