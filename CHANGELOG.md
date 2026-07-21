@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- Added `fintrace from-brief` for Codex, Claude, WorkBuddy, and other agent environments.
+- Added natural-language brief parsing for signal title, topic, ticker, include terms, watchlist, source registry scaffold, and agent instructions.
+- Added agent-oriented workflow guidance in the bundled skill.
+
 ## 0.3.0
 
 - Added `fintrace ingest` for automated source fetching, relevance screening, and evidence extraction.

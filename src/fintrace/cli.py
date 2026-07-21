@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from fintrace.brief import create_brief_pack
 from fintrace.extractor import extract_evidence_candidates, read_source_text
 from fintrace.ledger import (
     add_evidence,
@@ -83,6 +84,21 @@ def main(argv: list[str] | None = None) -> int:
     ingest_parser.add_argument("--min-score", type=int, default=1)
     ingest_parser.add_argument("--apply", action="store_true", help="Append ingested evidence to the signal card.")
     ingest_parser.set_defaults(func=cmd_ingest)
+
+    brief_parser = subparsers.add_parser("from-brief", help="Create a signal workspace from a natural-language user brief.")
+    brief_parser.add_argument("brief", help="User request or research brief.")
+    brief_parser.add_argument("--out-dir", required=True)
+    brief_parser.add_argument("--slug")
+    brief_parser.add_argument("--title")
+    brief_parser.add_argument("--topic")
+    brief_parser.add_argument("--ticker")
+    brief_parser.add_argument(
+        "--source-url",
+        action="append",
+        default=[],
+        help="Optional source URL, or NAME=URL. Can be repeated.",
+    )
+    brief_parser.set_defaults(func=cmd_from_brief)
 
     demo_parser = subparsers.add_parser("demo", help="Create a runnable NVDA demo signal.")
     demo_parser.add_argument("--out-dir", default=".")
@@ -225,6 +241,24 @@ def cmd_ingest(args: argparse.Namespace) -> None:
             )
         save_signal(signal, args.path)
         print(f"Applied {len(items)} ingested evidence items to {args.path}")
+
+
+def cmd_from_brief(args: argparse.Namespace) -> None:
+    pack = create_brief_pack(
+        args.brief,
+        out_dir=args.out_dir,
+        slug=args.slug,
+        title=args.title,
+        topic=args.topic,
+        ticker=args.ticker,
+        source_urls=args.source_url,
+    )
+    target_dir = Path(args.out_dir)
+    print(f"Created signal workspace: {target_dir}")
+    print(f"Signal: {target_dir / f'{pack.slug}.signal.json'}")
+    print(f"Sources: {target_dir / f'{pack.slug}.sources.json'}")
+    print(f"Agent brief: {target_dir / f'{pack.slug}.agent_brief.md'}")
+    print(f"Include terms: {', '.join(pack.include_terms[:12])}")
 
 
 def cmd_demo(args: argparse.Namespace) -> None:

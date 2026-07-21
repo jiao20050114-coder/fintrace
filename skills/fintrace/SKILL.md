@@ -9,19 +9,25 @@ Use this skill when the user asks to create, audit, update, or review a financia
 
 ## Workflow
 
-1. State the core hypothesis as a falsifiable claim.
-2. Separate supporting evidence from counter evidence.
-3. Record source, observed date, and evidence weight for every claim.
-4. Identify watchlist metrics that could strengthen, weaken, or falsify the signal.
-5. Run `fintrace status` after material evidence changes.
-6. Use `fintrace ingest` when the user wants FinTrace to fetch configured sources and screen them automatically.
-7. Use `fintrace extract` to turn raw text, files, or URLs into evidence candidates before manually adding evidence.
+1. Treat the user's natural-language request as the brief.
+2. Create a signal workspace with `fintrace from-brief`.
+3. Read the generated `*.agent_brief.md`.
+4. Locate primary and high-reliability sources when the generated `sources.json` has no URLs.
+5. Use `fintrace ingest` to fetch configured sources and screen them automatically.
+6. Show candidate evidence before applying it unless the user explicitly asked for automatic updates.
+7. Run `fintrace status` after material evidence changes.
 8. Render a Markdown report with `fintrace report` when the user needs a human-readable memo.
 9. Render an HTML evidence graph with `fintrace graph` when the user needs to inspect the logic visually.
 
 ## Commands
 
 Create a signal:
+
+```bash
+fintrace from-brief "User's research request" --out-dir path/to/workspace
+```
+
+Manual signal creation:
 
 ```bash
 fintrace init path/to/signal.json --title "Signal title" --hypothesis "Falsifiable hypothesis"
@@ -86,4 +92,6 @@ fintrace graph path/to/signal.json --out path/to/graph.html
 - Keep evidence atomic: one factual claim per evidence item.
 - Prefer verifiable primary sources for filings, financial statements, announcements, and transcripts.
 - Use counter evidence generously; a useful signal is allowed to be wrong quickly.
+- In agent environments, use the user's own words as the starting brief and preserve them in `*.agent_brief.md`.
+- If sources are missing, find source URLs first, update `sources.json`, then run ingest.
 - Do not present FinTrace output as investment advice.

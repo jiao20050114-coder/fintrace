@@ -58,6 +58,7 @@ Then run:
 
 ```bash
 fintrace demo --out-dir examples
+fintrace from-brief "Track Dymon Asia AUM, fund performance, and regulatory risk" --out-dir work/dymon-asia
 fintrace status examples/nvda_ai_demand.signal.json
 fintrace extract examples/nvda_ai_demand.signal.json --file examples/nvda_update.txt --source "Example update"
 fintrace ingest examples/nvda_ai_demand.signal.json --sources examples/sources.example.json
@@ -66,6 +67,31 @@ fintrace graph examples/nvda_ai_demand.signal.json --out examples/nvda_ai_demand
 ```
 
 ## Create A Signal Card
+
+For agent and skill use, start from the user's natural-language request:
+
+```bash
+fintrace from-brief "Track Dymon Asia AUM, fund performance, and regulatory risk" \
+  --out-dir work/dymon-asia
+```
+
+This creates:
+
+- `dymon-asia.signal.json`
+- `dymon-asia.sources.json`
+- `dymon-asia.agent_brief.md`
+
+An agent such as Codex, Claude, or WorkBuddy can read the generated agent brief, locate high-reliability sources, update `sources.json`, then run `fintrace ingest`.
+
+If the user already supplied source URLs:
+
+```bash
+fintrace from-brief "Track Dymon Asia AUM and risk signals" \
+  --out-dir work/dymon-asia \
+  --source-url "Official=https://example.com/rss.xml"
+```
+
+Manual creation is also supported:
 
 ```bash
 fintrace init examples/robotics.signal.json \
@@ -210,6 +236,18 @@ Example:
 ```
 
 The ingest ranking combines source reliability, signal relevance, configured terms, and extracted evidence score. Like `extract`, it previews results by default and only writes to the ledger with `--apply`.
+
+## Agent And Skill Mode
+
+FinTrace is designed to work inside Codex, Claude, WorkBuddy, and similar agent environments. In that mode the user usually gives a natural-language request, not a perfect CLI command.
+
+Use `from-brief` as the first step. It turns the user request into a small workspace containing a signal card, source registry scaffold, and agent instructions. The agent can then:
+
+- Search for primary and high-reliability sources.
+- Add source URLs to the generated `sources.json`.
+- Run `fintrace ingest` to screen those sources.
+- Show the candidate evidence to the user.
+- Apply evidence only after review or explicit instruction.
 
 ## Why This Exists
 
