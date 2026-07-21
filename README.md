@@ -21,19 +21,19 @@ The goal is not to replace financial judgment. The goal is to make research clai
 ## Quick Demo
 
 ```bash
-python -m fintrace.cli demo --out-dir examples
+python -m fintrace.cli demo --out-dir work/demo
 ```
 
 This creates:
 
-- `examples/nvda_ai_demand.signal.json`
-- `examples/nvda_ai_demand.report.md`
-- `examples/nvda_ai_demand.graph.html`
+- `work/demo/nvda_ai_demand.signal.json`
+- `work/demo/nvda_ai_demand.report.md`
+- `work/demo/nvda_ai_demand.graph.html`
 
 Then evaluate the signal again:
 
 ```bash
-python -m fintrace.cli status examples/nvda_ai_demand.signal.json
+python -m fintrace.cli status work/demo/nvda_ai_demand.signal.json
 ```
 
 Example output:
@@ -57,14 +57,14 @@ python -m pip install -e .
 Then run:
 
 ```bash
-fintrace demo --out-dir examples
+fintrace demo --out-dir work/demo
 fintrace from-brief "Track Dymon Asia AUM, fund performance, and regulatory risk" --out-dir work/dymon-asia
-fintrace status examples/nvda_ai_demand.signal.json
-fintrace import-evidence examples/nvda_ai_demand.signal.json --file examples/agent_evidence.example.json --evaluate
-fintrace extract examples/nvda_ai_demand.signal.json --file examples/nvda_update.txt --source "Example update"
-fintrace ingest examples/nvda_ai_demand.signal.json --sources examples/sources.example.json
-fintrace report examples/nvda_ai_demand.signal.json --out examples/nvda_ai_demand.report.md
-fintrace graph examples/nvda_ai_demand.signal.json --out examples/nvda_ai_demand.graph.html
+fintrace status work/dymon-asia/dymon-asia.signal.json
+fintrace import-evidence work/dymon-asia/dymon-asia.signal.json --file examples/agent_evidence.example.json --dry-run
+fintrace extract work/dymon-asia/dymon-asia.signal.json --file examples/nvda_update.txt --source "Example update"
+fintrace ingest work/dymon-asia/dymon-asia.signal.json --sources examples/sources.example.json
+fintrace report work/dymon-asia/dymon-asia.signal.json --out work/dymon-asia/report.md
+fintrace graph work/dymon-asia/dymon-asia.signal.json --out work/dymon-asia/graph.html
 ```
 
 ## Create A Signal Card
@@ -274,6 +274,14 @@ When the agent has already read and understood source material, use `import-evid
 ```bash
 fintrace import-evidence work/dymon-asia/dymon-asia.signal.json \
   --file work/dymon-asia/agent_evidence.json \
+  --dry-run
+```
+
+Then import and evaluate:
+
+```bash
+fintrace import-evidence work/dymon-asia/dymon-asia.signal.json \
+  --file work/dymon-asia/agent_evidence.json \
   --evaluate
 ```
 
@@ -294,6 +302,8 @@ Agent evidence JSON can be an array or an object with an `evidence` array:
   ]
 }
 ```
+
+The JSON contract is also captured in `schemas/agent_evidence.schema.json`.
 
 This keeps the architecture simple: the agent handles semantic understanding, while FinTrace stores evidence, updates status, and renders the ledger.
 

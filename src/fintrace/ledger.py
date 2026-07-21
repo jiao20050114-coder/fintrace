@@ -35,7 +35,7 @@ def evaluate_signal(signal: Signal) -> tuple[SignalStatus, float, str]:
 
     if counter_score >= 2.0 and counter_score >= support_score + 1.0:
         status = SignalStatus.FALSIFIED
-    elif counter_score >= max(1.0, support_score * 0.65):
+    elif counter_score >= 1.0 and counter_score >= support_score * 1.25:
         status = SignalStatus.WEAKENED
     elif support_score >= 2.0 and support_score >= counter_score * 1.5:
         status = SignalStatus.STRENGTHENED
@@ -68,12 +68,14 @@ def add_evidence(
     url: str | None,
     observed_at: str | None,
     weight: float,
+    reason: str | None = None,
 ) -> Evidence:
     evidence = Evidence(
         text=text,
         source=source,
         kind=kind,
         url=url,
+        reason=reason,
         observed_at=observed_at or datetime.now(timezone.utc).date().isoformat(),
         weight=weight,
     )
@@ -381,6 +383,8 @@ def _evidence_section(title: str, items: list[Evidence]) -> list[str]:
     for item in items:
         url = f" ([source]({item.url}))" if item.url else ""
         lines.append(f"- {item.text}{url}")
+        if item.reason:
+            lines.append(f"  - Reason: {item.reason}")
         lines.append(f"  - Source: {item.source}; observed: {item.observed_at}; weight: {item.weight:.1f}")
     lines.append("")
     return lines
@@ -396,9 +400,11 @@ def _html_evidence_group(title: str, items: list[Evidence], kind_class: str) -> 
 
 def _html_evidence_node(item: Evidence, kind_class: str) -> str:
     link = f' <a href="{escape(item.url)}">source link</a>' if item.url else ""
+    reason = f'<div class="source">Reason: {escape(item.reason)}</div>' if item.reason else ""
     return f"""
           <article class="node {kind_class}">
             <p>{escape(item.text)}</p>
+            {reason}
             <div class="source">Source: {escape(item.source)}{link}<br>Observed: {escape(item.observed_at)} | Weight: {item.weight:.1f}</div>
           </article>
 """

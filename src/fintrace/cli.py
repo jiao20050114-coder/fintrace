@@ -108,7 +108,8 @@ def main(argv: list[str] | None = None) -> int:
     import_parser.add_argument("path")
     import_parser.add_argument("--file", required=True, help="Evidence JSON file.")
     import_parser.add_argument("--default-source")
-    import_parser.add_argument("--no-reason", action="store_true", help="Do not append item reasons to evidence text.")
+    import_parser.add_argument("--dry-run", action="store_true", help="Preview import without changing the signal card.")
+    import_parser.add_argument("--allow-duplicates", action="store_true", help="Import duplicate evidence items.")
     import_parser.add_argument("--evaluate", action="store_true", help="Evaluate signal status after import.")
     import_parser.set_defaults(func=cmd_import_evidence)
 
@@ -283,9 +284,20 @@ def cmd_import_evidence(args: argparse.Namespace) -> None:
         signal,
         raw_items,
         default_source=args.default_source,
-        include_reason=not args.no_reason,
-        evaluate=args.evaluate,
+        dedupe=not args.allow_duplicates,
+        evaluate=args.evaluate and not args.dry_run,
     )
+    for index, evidence in enumerate(result.evidence, start=1):
+        print(f"[{index}] {evidence.kind.value} | weight {evidence.weight:.1f} | source {evidence.source}")
+        print(evidence.text)
+        if evidence.reason:
+            print(f"Reason: {evidence.reason}")
+        if evidence.url:
+            print(f"URL: {evidence.url}")
+        print()
+    if args.dry_run:
+        print(f"Dry run: {len(result.evidence)} evidence items would be imported into {args.path}")
+        return
     save_signal(signal, args.path)
     print(f"Imported {len(result.evidence)} evidence items into {args.path}")
     if result.update_event:

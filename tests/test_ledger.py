@@ -48,6 +48,33 @@ def test_record_evaluation_appends_update_event():
     assert len(signal.updates) == 1
 
 
+def test_mixed_evidence_stays_active_until_counter_outweighs_support():
+    signal = Signal(title="Test", hypothesis="Demand is improving")
+    add_evidence(
+        signal,
+        text="AUM improved",
+        source="Factsheet",
+        kind=EvidenceKind.SUPPORT,
+        url=None,
+        observed_at="2026-07-21",
+        weight=1.3,
+    )
+    add_evidence(
+        signal,
+        text="Performance was concentrated",
+        source="Commentary",
+        kind=EvidenceKind.COUNTER,
+        url=None,
+        observed_at="2026-07-21",
+        weight=1.1,
+    )
+
+    status, confidence, _ = evaluate_signal(signal)
+
+    assert status == SignalStatus.ACTIVE
+    assert confidence > 0.5
+
+
 def test_render_html_graph_contains_hypothesis_and_evidence():
     signal = Signal(title="Graph Test", hypothesis="Orders are improving")
     add_evidence(
@@ -58,6 +85,7 @@ def test_render_html_graph_contains_hypothesis_and_evidence():
         url="https://example.com/report",
         observed_at="2026-07-21",
         weight=1.0,
+        reason="Backlog is a leading demand indicator.",
     )
 
     html = render_html_graph(signal)
@@ -65,4 +93,5 @@ def test_render_html_graph_contains_hypothesis_and_evidence():
     assert "<!doctype html>" in html
     assert "Orders are improving" in html
     assert "Backlog increased" in html
+    assert "Backlog is a leading demand indicator." in html
     assert "https://example.com/report" in html

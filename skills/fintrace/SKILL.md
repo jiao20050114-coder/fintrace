@@ -22,6 +22,12 @@ Use this skill when the user asks to create, audit, update, or review a financia
 
 ## Commands
 
+Use `fintrace ...` when the CLI is installed. If it is not on `PATH`, run commands from the repository root as:
+
+```bash
+PYTHONPATH=src python -m fintrace.cli ...
+```
+
 Create a signal:
 
 ```bash
@@ -89,26 +95,11 @@ fintrace ingest path/to/signal.json --sources path/to/sources.json --query "topi
 Import structured evidence produced by the agent:
 
 ```bash
+fintrace import-evidence path/to/signal.json --file path/to/agent_evidence.json --dry-run
 fintrace import-evidence path/to/signal.json --file path/to/agent_evidence.json --evaluate
 ```
 
-Expected evidence JSON:
-
-```json
-{
-  "evidence": [
-    {
-      "kind": "support",
-      "text": "Evidence claim.",
-      "source": "Source name",
-      "url": "https://example.com",
-      "observed_at": "2026-07-22",
-      "weight": 1.2,
-      "reason": "Why this supports or weakens the signal."
-    }
-  ]
-}
-```
+For the evidence JSON contract, read `references/agent-evidence-contract.md`.
 
 Render:
 
@@ -132,3 +123,5 @@ fintrace graph path/to/signal.json --out path/to/graph.html
 - If sources are missing, find source URLs first, update `sources.json`, then run ingest.
 - For any language not covered by built-in terms, add user-language `support_terms`, `counter_terms`, and `finance_terms` before ingesting.
 - Do not present FinTrace output as investment advice.
+
+Before finalizing a user-facing result, read `references/adversarial-checklist.md` and resolve any red flags.

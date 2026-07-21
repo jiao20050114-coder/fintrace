@@ -1,0 +1,6 @@
+interface:
+  display_name: "FinTrace"
+  short_description: "Track research signals with auditable evidence."
+  default_prompt: "Use $fintrace to turn my research question into an auditable signal card, evidence ledger, report, and graph."
+policy:
+  allow_implicit_invocation: true

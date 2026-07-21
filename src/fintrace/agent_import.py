@@ -33,25 +33,31 @@ def import_agent_evidence(
     items: list[dict[str, Any]],
     *,
     default_source: str | None = None,
-    include_reason: bool = True,
+    dedupe: bool = True,
     evaluate: bool = False,
 ) -> ImportResult:
     imported: list[Evidence] = []
+    existing = {_dedupe_key(item.text, item.source, item.url) for item in signal.evidence}
     for item in items:
         text = _required_str(item, "text")
         reason = str(item.get("reason", "")).strip()
-        if include_reason and reason:
-            text = f"{text}\nReason: {reason}"
+        source = str(item.get("source") or default_source or "Agent import")
+        url = item.get("url")
+        key = _dedupe_key(text, source, url)
+        if dedupe and key in existing:
+            continue
         evidence = add_evidence(
             signal,
             text=text,
-            source=str(item.get("source") or default_source or "Agent import"),
+            source=source,
             kind=EvidenceKind(str(item.get("kind", EvidenceKind.NEUTRAL))),
-            url=item.get("url"),
+            url=url,
             observed_at=item.get("observed_at"),
-            weight=float(item.get("weight", 1.0)),
+            weight=_coerce_weight(item.get("weight", 1.0)),
+            reason=reason or None,
         )
         imported.append(evidence)
+        existing.add(key)
 
     update_event = record_evaluation(signal) if evaluate and imported else None
     return ImportResult(evidence=imported, update_event=update_event)
@@ -62,3 +68,14 @@ def _required_str(item: dict[str, Any], key: str) -> str:
     if value is None or not str(value).strip():
         raise ValueError(f"Evidence item is missing required field '{key}'.")
     return str(value).strip()
+
+
+def _dedupe_key(text: str, source: str, url: object) -> tuple[str, str, str]:
+    return (text.strip().lower(), source.strip().lower(), str(url or "").strip())
+
+
+def _coerce_weight(value: object) -> float:
+    weight = float(value)
+    if weight < 0 or weight > 2:
+        raise ValueError("Evidence weight must be between 0 and 2.")
+    return weight

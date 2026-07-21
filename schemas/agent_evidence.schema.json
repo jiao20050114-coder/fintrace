@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FinTrace Agent Evidence",
+  "description": "Structured evidence produced by an agent or LLM for import into a FinTrace signal card.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/evidence_array"
+    },
+    {
+      "type": "object",
+      "required": ["evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "evidence": {
+          "$ref": "#/$defs/evidence_array"
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "evidence_array": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/evidence_item"
+      }
+    },
+    "evidence_item": {
+      "type": "object",
+      "required": ["kind", "text", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["support", "counter", "neutral"]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": ["string", "null"]
+        },
+        "observed_at": {
+          "type": ["string", "null"],
+          "description": "ISO 8601 date if known."
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Why this item supports, weakens, or neutrally informs the signal."
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0
+
+- Added first-class `reason` storage on evidence items.
+- Added dry-run and duplicate protection to `fintrace import-evidence`.
+- Added agent evidence JSON Schema and skill references for agent contracts and adversarial review.
+- Added skill UI metadata in `skills/fintrace/agents/openai.yaml`.
+- Adjusted mixed-evidence scoring so close support/counter evidence remains `active` instead of prematurely `weakened`.
+
 ## 0.6.0
 
 - Added `fintrace import-evidence` for structured evidence produced by agents or LLMs.

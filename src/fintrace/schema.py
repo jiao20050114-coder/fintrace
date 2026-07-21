@@ -27,6 +27,7 @@ class Evidence:
     source: str
     kind: EvidenceKind = EvidenceKind.SUPPORT
     url: str | None = None
+    reason: str | None = None
     observed_at: str = field(default_factory=lambda: date.today().isoformat())
     weight: float = 1.0
     id: str = field(default_factory=lambda: f"ev_{uuid4().hex[:10]}")
@@ -39,6 +40,7 @@ class Evidence:
             source=str(data["source"]),
             kind=EvidenceKind(data.get("kind", EvidenceKind.SUPPORT)),
             url=data.get("url"),
+            reason=data.get("reason"),
             observed_at=str(data.get("observed_at") or date.today().isoformat()),
             weight=float(data.get("weight", 1.0)),
         )
