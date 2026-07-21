@@ -82,3 +82,41 @@ def test_import_evidence_dry_run_does_not_write_signal(tmp_path):
 
     assert "Dry run" in result.stdout
     assert signal.read_text(encoding="utf-8") == before
+
+
+def test_ingest_empty_source_registry_warns(tmp_path):
+    signal = tmp_path / "signal.json"
+    sources = tmp_path / "sources.json"
+    sources.write_text('{"sources": []}', encoding="utf-8")
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "fintrace.cli",
+            "init",
+            str(signal),
+            "--title",
+            "Empty Sources",
+            "--hypothesis",
+            "Demand is improving",
+        ],
+        check=True,
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "fintrace.cli",
+            "ingest",
+            str(signal),
+            "--sources",
+            str(sources),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "No sources configured" in result.stderr
+    assert "No relevant evidence" in result.stdout

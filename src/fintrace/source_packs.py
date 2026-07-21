@@ -20,7 +20,7 @@ BUILTIN_PACKS: dict[str, SourcePack] = {
     "sec-us": SourcePack(
         id="sec-us",
         description="SEC EDGAR company filings Atom feed for US-listed issuers.",
-        required_params=("cik",),
+        required_params=("ticker", "cik"),
         registry={
             "sources": [
                 {
@@ -81,13 +81,13 @@ BUILTIN_PACKS: dict[str, SourcePack] = {
     ),
     "nvda": SourcePack(
         id="nvda",
-        description="NVIDIA investor relations and newsroom RSS sources.",
+        description="NVIDIA investor relations and newsroom HTML source pages.",
         registry={
             "sources": [
                 {
-                    "id": "nvidia-ir-rss",
-                    "name": "NVIDIA Investor Relations RSS",
-                    "kind": "feed",
+                    "id": "nvidia-ir",
+                    "name": "NVIDIA Investor Relations",
+                    "kind": "page",
                     "url": "https://investor.nvidia.com/investor-resources/rss/default.aspx",
                     "reliability": 0.95,
                     "include_terms": ["NVIDIA", "revenue", "data center", "AI", "guidance", "earnings"],
@@ -97,9 +97,9 @@ BUILTIN_PACKS: dict[str, SourcePack] = {
                     "finance_terms": ["revenue", "gross margin", "data center", "guidance", "inventory"],
                 },
                 {
-                    "id": "nvidia-newsroom-rss",
-                    "name": "NVIDIA Newsroom RSS",
-                    "kind": "feed",
+                    "id": "nvidia-newsroom",
+                    "name": "NVIDIA Newsroom",
+                    "kind": "page",
                     "url": "https://nvidianews.nvidia.com/rss",
                     "reliability": 0.82,
                     "include_terms": ["NVIDIA", "AI", "data center", "GPU", "partnership"],
@@ -111,6 +111,7 @@ BUILTIN_PACKS: dict[str, SourcePack] = {
             ],
             "agent_instructions": [
                 "Treat IR materials as higher reliability than newsroom marketing.",
+                "These NVIDIA URLs are HTML source pages; use ingest for coarse screening and import-evidence after semantic reading for final evidence.",
                 "Use newsroom items as lead indicators only when they contain concrete customer, product, or demand evidence.",
             ],
         },
@@ -226,19 +227,25 @@ def render_source_pack(
     cik: str | None = None,
 ) -> dict[str, Any]:
     pack = get_source_pack(pack_id)
+    raw_params = {
+        "ticker": ticker,
+        "cik": cik,
+    }
+    missing = [name for name in pack.required_params if not raw_params.get(name)]
+    if missing:
+        raise ValueError(f"Source pack '{pack_id}' requires: {', '.join(missing)}")
     params = {
         "ticker": ticker or "UNKNOWN",
         "ticker_lc": (ticker or "unknown").lower(),
         "cik": cik or "",
     }
-    missing = [name for name in pack.required_params if not params.get(name)]
-    if missing:
-        raise ValueError(f"Source pack '{pack_id}' requires: {', '.join(missing)}")
     return _render_templates(deepcopy(pack.registry), params)
 
 
 def write_source_pack(path: str | Path, registry: dict[str, Any]) -> None:
-    Path(path).write_text(json.dumps(registry, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(registry, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def _render_templates(value: Any, params: dict[str, str]) -> Any:

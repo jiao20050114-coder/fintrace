@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from fintrace.agent_import import import_agent_evidence, load_agent_evidence
@@ -240,6 +241,14 @@ def cmd_extract(args: argparse.Namespace) -> None:
 def cmd_ingest(args: argparse.Namespace) -> None:
     signal = load_signal(args.path)
     sources = load_sources(args.sources)
+    if not sources:
+        print(
+            f"Warning: No sources configured in {args.sources}; add source URLs before ingesting.",
+            file=sys.stderr,
+        )
+        print("No relevant evidence found from configured sources.")
+        return
+    warnings: list[str] = []
     items = ingest_sources(
         signal,
         sources,
@@ -247,7 +256,10 @@ def cmd_ingest(args: argparse.Namespace) -> None:
         max_items=args.max_items,
         per_source_limit=args.per_source_limit,
         min_score=args.min_score,
+        warnings=warnings,
     )
+    for warning in warnings:
+        print(f"Warning: {warning}", file=sys.stderr)
 
     if not items:
         print("No relevant evidence found from configured sources.")
@@ -300,14 +312,18 @@ def cmd_from_brief(args: argparse.Namespace) -> None:
 
 def cmd_import_evidence(args: argparse.Namespace) -> None:
     signal = load_signal(args.path)
-    raw_items = load_agent_evidence(args.file)
-    result = import_agent_evidence(
-        signal,
-        raw_items,
-        default_source=args.default_source,
-        dedupe=not args.allow_duplicates,
-        evaluate=args.evaluate and not args.dry_run,
-    )
+    try:
+        raw_items = load_agent_evidence(args.file)
+        result = import_agent_evidence(
+            signal,
+            raw_items,
+            default_source=args.default_source,
+            dedupe=not args.allow_duplicates,
+            evaluate=args.evaluate and not args.dry_run,
+            dry_run=args.dry_run,
+        )
+    except ValueError as exc:
+        raise SystemExit(f"Error: {exc}") from exc
     for index, evidence in enumerate(result.evidence, start=1):
         print(f"[{index}] {evidence.kind.value} | weight {evidence.weight:.1f} | source {evidence.source}")
         print(evidence.text)
@@ -336,12 +352,18 @@ def cmd_source_pack_list(args: argparse.Namespace) -> None:
 
 
 def cmd_source_pack_show(args: argparse.Namespace) -> None:
-    registry = render_source_pack(args.pack_id, ticker=args.ticker, cik=args.cik)
+    try:
+        registry = render_source_pack(args.pack_id, ticker=args.ticker, cik=args.cik)
+    except ValueError as exc:
+        raise SystemExit(f"Error: {exc}") from exc
     print(json.dumps(registry, indent=2, ensure_ascii=False))
 
 
 def cmd_source_pack_create(args: argparse.Namespace) -> None:
-    registry = render_source_pack(args.pack_id, ticker=args.ticker, cik=args.cik)
+    try:
+        registry = render_source_pack(args.pack_id, ticker=args.ticker, cik=args.cik)
+    except ValueError as exc:
+        raise SystemExit(f"Error: {exc}") from exc
     write_source_pack(args.out, registry)
     pack = get_source_pack(args.pack_id)
     print(f"Wrote source pack '{pack.id}' to {args.out}")

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.8.1
+
+- Hardened source-pack CLI error handling for missing parameters and unknown packs.
+- Source pack writes now create parent directories automatically.
+- `fintrace ingest` now skips failed sources with warnings instead of aborting the whole run.
+- `fintrace ingest` now warns clearly when a registry has no configured sources.
+- Corrected NVIDIA built-in sources to HTML page sources after verifying the URLs do not return RSS XML.
+- Made `import-evidence --dry-run` avoid mutating the in-memory signal object.
+- Aligned `import-evidence` with the JSON Schema by rejecting unknown evidence fields.
+- Improved ingest relevance matching for CJK query terms and Latin word boundaries.
+
 ## 0.8.0
 
 - Added `fintrace source-pack list/show/create`.

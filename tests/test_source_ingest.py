@@ -58,6 +58,46 @@ def test_score_relevance_uses_signal_terms_and_source_terms():
     assert score_relevance(document, source=source, query_terms=query_terms) >= 5
 
 
+def test_score_relevance_uses_cjk_query_terms():
+    signal = Signal(title="阿里云需求", hypothesis="云收入增长")
+    query_terms = build_query_terms(signal)
+    source = Source(id="demo", name="Demo", url="memory://feed", reliability=0.8)
+    document = parse_feed(
+        """
+        <rss version="2.0"><channel><item>
+          <title>阿里云收入增长</title>
+          <description>企业需求改善。</description>
+        </item></channel></rss>
+        """,
+        source=source,
+    )[0]
+
+    assert "云收入增长" in query_terms
+    assert score_relevance(document, source=source, query_terms=query_terms) >= 3
+
+
+def test_score_relevance_uses_word_boundaries_for_latin_terms():
+    source = Source(
+        id="demo",
+        name="Demo",
+        url="memory://feed",
+        reliability=0.8,
+        include_terms=["risk"],
+        exclude_terms=["ban"],
+    )
+    document = parse_feed(
+        """
+        <rss version="2.0"><channel><item>
+          <title>Urbanization update</title>
+          <description>Brisk sales improved.</description>
+        </item></channel></rss>
+        """,
+        source=source,
+    )[0]
+
+    assert score_relevance(document, source=source, query_terms={"risk"}) == 2
+
+
 def test_ingest_sources_fetches_local_feed(tmp_path):
     feed = tmp_path / "feed.xml"
     feed.write_text(
@@ -128,3 +168,17 @@ def test_source_registry_accepts_custom_language_terms():
     assert source.support_terms == ["续约率改善"]
     assert source.counter_terms == ["坏账上升"]
     assert source.finance_terms == ["客户"]
+
+
+def test_ingest_sources_skips_bad_sources_with_warning(tmp_path):
+    signal = Signal(title="Test", hypothesis="Revenue demand is improving")
+    sources = [
+        Source(id="bad", name="Bad Source", url=str(tmp_path / "missing.xml")),
+    ]
+    warnings: list[str] = []
+
+    items = ingest_sources(signal, sources, warnings=warnings)
+
+    assert items == []
+    assert len(warnings) == 1
+    assert "Bad Source" in warnings[0]

@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-from fintrace.extractor import EvidenceCandidate, extract_evidence_candidates, strip_html
+from fintrace.extractor import EvidenceCandidate, _contains_term, extract_evidence_candidates, strip_html
 from fintrace.schema import EvidenceKind, Signal
 
 
@@ -79,12 +79,19 @@ def ingest_sources(
     max_items: int = 12,
     per_source_limit: int = 8,
     min_score: int = 1,
+    warnings: list[str] | None = None,
 ) -> list[IngestedEvidence]:
     query_terms = build_query_terms(signal, query=query)
     ingested: list[IngestedEvidence] = []
 
     for source in sources:
-        for document in fetch_documents(source, limit=per_source_limit):
+        try:
+            documents = fetch_documents(source, limit=per_source_limit)
+        except (OSError, ET.ParseError, UnicodeError, ValueError) as exc:
+            if warnings is not None:
+                warnings.append(f"Skipped source '{source.name}' ({source.url}): {exc}")
+            continue
+        for document in documents:
             relevance_score = score_relevance(document, source=source, query_terms=query_terms)
             if relevance_score <= 0:
                 continue
@@ -161,6 +168,7 @@ def build_query_terms(signal: Signal, *, query: str | None = None) -> set[str]:
     ]
     text = " ".join(raw_parts).lower()
     terms = {part for part in re.findall(r"[a-zA-Z0-9][a-zA-Z0-9-]{2,}", text)}
+    terms.update(part for part in re.findall(r"[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]{2,}", text))
     if signal.ticker:
         terms.add(signal.ticker.lower())
     return terms
@@ -168,12 +176,12 @@ def build_query_terms(signal: Signal, *, query: str | None = None) -> set[str]:
 
 def score_relevance(document: Document, *, source: Source, query_terms: set[str]) -> int:
     text = f"{document.title} {document.text}".lower()
-    if any(term.lower() in text for term in source.exclude_terms):
+    if any(_contains_term(text, term.lower()) for term in source.exclude_terms):
         return 0
 
     score = 0
-    score += sum(1 for term in query_terms if term in text)
-    score += 2 * sum(1 for term in source.include_terms if term.lower() in text)
+    score += sum(1 for term in query_terms if _contains_term(text, term.lower()))
+    score += 2 * sum(1 for term in source.include_terms if _contains_term(text, term.lower()))
     score += int(source.reliability * 3)
     return score
 

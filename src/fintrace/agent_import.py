@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from fintrace.ledger import add_evidence, record_evaluation
 from fintrace.schema import Evidence, EvidenceKind, Signal, UpdateEvent
+
+ALLOWED_AGENT_EVIDENCE_FIELDS = {
+    "kind",
+    "text",
+    "source",
+    "url",
+    "observed_at",
+    "weight",
+    "reason",
+}
 
 
 @dataclass(frozen=True)
@@ -25,6 +36,10 @@ def load_agent_evidence(path: str | Path) -> list[dict[str, Any]]:
         raise ValueError("Evidence JSON must be an array or an object with an 'evidence' array.")
     if not all(isinstance(item, dict) for item in raw_items):
         raise ValueError("Every evidence item must be an object.")
+    for item in raw_items:
+        unknown = sorted(set(item) - ALLOWED_AGENT_EVIDENCE_FIELDS)
+        if unknown:
+            raise ValueError(f"Evidence item contains unknown field(s): {', '.join(unknown)}.")
     return raw_items
 
 
@@ -35,9 +50,11 @@ def import_agent_evidence(
     default_source: str | None = None,
     dedupe: bool = True,
     evaluate: bool = False,
+    dry_run: bool = False,
 ) -> ImportResult:
+    target = deepcopy(signal) if dry_run else signal
     imported: list[Evidence] = []
-    existing = {_dedupe_key(item.text, item.source, item.url) for item in signal.evidence}
+    existing = {_dedupe_key(item.text, item.source, item.url) for item in target.evidence}
     for item in items:
         text = _required_str(item, "text")
         reason = str(item.get("reason", "")).strip()
@@ -47,7 +64,7 @@ def import_agent_evidence(
         if dedupe and key in existing:
             continue
         evidence = add_evidence(
-            signal,
+            target,
             text=text,
             source=source,
             kind=EvidenceKind(str(item.get("kind", EvidenceKind.NEUTRAL))),
@@ -59,7 +76,7 @@ def import_agent_evidence(
         imported.append(evidence)
         existing.add(key)
 
-    update_event = record_evaluation(signal) if evaluate and imported else None
+    update_event = record_evaluation(target) if evaluate and imported else None
     return ImportResult(evidence=imported, update_event=update_event)
 
 

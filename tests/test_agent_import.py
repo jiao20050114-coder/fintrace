@@ -24,6 +24,17 @@ def test_load_agent_evidence_accepts_array(tmp_path):
     assert items == [{"text": "Revenue grew"}]
 
 
+def test_load_agent_evidence_rejects_unknown_fields(tmp_path):
+    path = tmp_path / "evidence.json"
+    path.write_text(
+        json.dumps({"evidence": [{"text": "Revenue grew", "source": "Agent", "confidence": 0.9}]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="unknown field"):
+        load_agent_evidence(path)
+
+
 def test_import_agent_evidence_appends_reason_and_evaluates():
     signal = Signal(title="Agent Signal", hypothesis="Demand is improving")
     result = import_agent_evidence(
@@ -95,3 +106,16 @@ def test_import_agent_evidence_can_allow_duplicates():
 
     assert len(second.evidence) == 1
     assert len(signal.evidence) == 2
+
+
+def test_import_agent_evidence_dry_run_does_not_mutate_signal():
+    signal = Signal(title="Agent Signal", hypothesis="Demand is improving")
+
+    result = import_agent_evidence(
+        signal,
+        [{"kind": "support", "text": "Revenue growth accelerated.", "source": "Agent source"}],
+        dry_run=True,
+    )
+
+    assert len(result.evidence) == 1
+    assert signal.evidence == []
