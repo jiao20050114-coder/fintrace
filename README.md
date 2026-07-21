@@ -60,6 +60,7 @@ Then run:
 fintrace demo --out-dir work/demo
 fintrace from-brief "Track Dymon Asia AUM, fund performance, and regulatory risk" --out-dir work/dymon-asia
 fintrace source-plan "Track Dymon Asia AUM, fund performance, and regulatory risk" --out work/dymon-asia/source_plan.md
+fintrace discover "Track Dymon Asia AUM, fund performance, and regulatory risk" --out work/dymon-asia/discovered.sources.json
 fintrace source-pack create dymon-asia --out work/dymon-asia/dymon-asia.sources.json
 fintrace status work/dymon-asia/dymon-asia.signal.json
 fintrace import-evidence work/dymon-asia/dymon-asia.signal.json --file examples/agent_evidence.example.json --dry-run
@@ -85,7 +86,12 @@ This creates:
 - `dymon-asia.agent_brief.md`
 - `dymon-asia.source_plan.md`
 
-An agent such as Codex, Claude, or WorkBuddy can read the generated agent brief and source plan, locate high-reliability sources, update `sources.json`, then run `fintrace ingest`.
+An agent such as Codex, Claude, or WorkBuddy can read the generated agent brief and source plan, locate high-reliability sources, update `sources.json`, then run `fintrace ingest`. For a CLI-first workflow, run `fintrace discover` to search and score candidate sources automatically:
+
+```bash
+fintrace discover "Track Dymon Asia AUM, fund performance, and regulatory risk" \
+  --out work/dymon-asia/discovered.sources.json
+```
 
 To generate only the search and source-triage plan:
 
@@ -207,6 +213,25 @@ fintrace ingest examples/robotics.signal.json \
   --apply
 ```
 
+## Source Discovery
+
+`fintrace discover` turns a user brief into search queries, fetches search result pages, scores candidate source reliability, and writes a `sources.json` registry that can be reviewed and passed to `fintrace ingest`.
+
+```bash
+fintrace discover "Track NVDA AI demand, data center revenue, and export restriction risk" \
+  --out work/nvda/discovered.sources.json \
+  --max-queries 4 \
+  --max-results 12
+```
+
+Discovery scoring is conservative and transparent:
+
+- `0.90+`: regulator, exchange, or official filing-style domains
+- `0.75-0.90`: official-looking IR, report, factsheet, announcement, or reputable financial news sources
+- `<0.50`: weak secondary sources, social sources, or low-signal pages
+
+Search engines may block or throttle automated requests. When that happens, use the generated `*.source_plan.md` inside Codex/Claude/WorkBuddy, let the agent browse, and pass saved search-result HTML with `--search-html`, or add selected URLs manually.
+
 Render a report:
 
 ```bash
@@ -312,7 +337,7 @@ FinTrace is designed to work inside Codex, Claude, WorkBuddy, and similar agent 
 Use `from-brief` as the first step. It turns the user request into a small workspace containing a signal card, source registry scaffold, and agent instructions. The agent can then:
 
 - Read `*.source_plan.md` for search queries, source priority, and rejection rules.
-- Search for primary and high-reliability sources.
+- Run `fintrace discover` or search for primary and high-reliability sources.
 - Add source URLs to the generated `sources.json`.
 - Run `fintrace ingest` to screen those sources.
 - Show the candidate evidence to the user.
@@ -374,7 +399,7 @@ FinTrace is designed as a small building block for:
 
 - JSON schema export
 - Evidence freshness decay
-- Source reliability scoring
+- Source health checks and freshness scoring
 - MCP server wrapper
 - Codex/Claude skill package
 - LLM-assisted evidence extraction from filings, transcripts, and news

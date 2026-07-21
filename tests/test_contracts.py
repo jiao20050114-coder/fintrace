@@ -158,3 +158,65 @@ def test_source_plan_cli_writes_agent_plan(tmp_path):
 
     assert "Wrote source plan" in result.stdout
     assert "Search Queries" in out.read_text(encoding="utf-8")
+
+
+def test_discover_cli_writes_sources_from_search_fixture(tmp_path):
+    out = tmp_path / "sources.json"
+    search_html = tmp_path / "search.html"
+    search_html.write_text(
+        """
+        <html><body>
+          <a href="/l/?uddg=https%3A%2F%2Fwww.dymonasia.com%2F">Dymon Asia Official Website</a>
+          <a href="/l/?uddg=https%3A%2F%2Fwww.reuters.com%2Fmarkets%2F">Reuters market story</a>
+        </body></html>
+        """,
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "fintrace.cli",
+            "discover",
+            "Track Dymon Asia AUM and regulatory risk",
+            "--out",
+            str(out),
+            "--search-html",
+            str(search_html),
+            "--max-queries",
+            "1",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=_cli_env(),
+    )
+
+    registry = json.loads(out.read_text(encoding="utf-8"))
+    assert "Wrote discovered source registry" in result.stdout
+    assert registry["sources"][0]["url"] == "https://www.dymonasia.com/"
+    assert registry["source_discovery"]["search_queries"]
+
+
+def test_discover_cli_missing_search_fixture_is_user_friendly(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "fintrace.cli",
+            "discover",
+            "Track Dymon Asia AUM and regulatory risk",
+            "--out",
+            str(tmp_path / "sources.json"),
+            "--search-html",
+            str(tmp_path / "missing.html"),
+        ],
+        capture_output=True,
+        text=True,
+        env=_cli_env(),
+    )
+
+    assert result.returncode != 0
+    assert "Error:" in result.stderr
+    assert "Traceback" not in result.stderr

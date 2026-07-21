@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0
+
+- Added `fintrace discover` to run source-plan queries, parse search result pages, score candidate source reliability, and write a ready-to-review `sources.json`.
+- Added dependency-free source reliability scoring for regulator/exchange domains, official-looking IR/report paths, reputable financial news, weak social/commentary sources, and evidence-bearing URLs.
+- Added offline `--search-html` support for deterministic tests and agent-provided search result pages.
+- Added tests for search-result parsing, DuckDuckGo redirect unwrapping, source scoring, discovery registries, and CLI discovery.
+
 ## 0.9.0
 
 - Added `fintrace source-plan` to generate agent-readable source discovery, triage, and evidence-import plans from natural-language briefs.

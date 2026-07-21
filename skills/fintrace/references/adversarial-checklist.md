@@ -15,6 +15,7 @@ Use this checklist before telling the user a FinTrace run is complete.
 - Primary sources were preferred: filings, company IR, exchange notices, regulator publications, factsheets, transcripts.
 - Secondary sources were used only when primary sources were unavailable or linked.
 - Source reliability in `sources.json` is plausible and not uniformly high.
+- Sources from `fintrace discover` were reviewed; weak secondary or social sources were not ingested blindly.
 - `exclude_terms` remove obvious noise such as sponsored posts, rumors, events, and generic marketing.
 - Built-in source packs were used when applicable, and any `agent_instructions` were followed.
 

@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fintrace.agent_import import import_agent_evidence, load_agent_evidence
 from fintrace.brief import create_brief_pack, create_source_plan
+from fintrace.discovery import discover_sources, write_discovery_registry
 from fintrace.extractor import extract_evidence_candidates, read_source_text
 from fintrace.ledger import (
     add_evidence,
@@ -114,6 +115,22 @@ def main(argv: list[str] | None = None) -> int:
     plan_parser.add_argument("--topic")
     plan_parser.add_argument("--ticker")
     plan_parser.set_defaults(func=cmd_source_plan)
+
+    discover_parser = subparsers.add_parser("discover", help="Search for candidate sources and write a scored source registry.")
+    discover_parser.add_argument("brief", help="User request or research brief.")
+    discover_parser.add_argument("--out", required=True, help="Where to write discovered sources JSON.")
+    discover_parser.add_argument("--title")
+    discover_parser.add_argument("--topic")
+    discover_parser.add_argument("--ticker")
+    discover_parser.add_argument("--max-results", type=int, default=12)
+    discover_parser.add_argument("--max-queries", type=int, default=4)
+    discover_parser.add_argument(
+        "--search-html",
+        action="append",
+        default=[],
+        help="Optional local search-result HTML fixture. Can be repeated; used instead of live web search.",
+    )
+    discover_parser.set_defaults(func=cmd_discover)
 
     import_parser = subparsers.add_parser("import-evidence", help="Import structured evidence produced by an agent or LLM.")
     import_parser.add_argument("path")
@@ -335,6 +352,37 @@ def cmd_source_plan(args: argparse.Namespace) -> None:
     print("Search queries:")
     for query in plan.search_queries[:6]:
         print(f"- {query}")
+
+
+def cmd_discover(args: argparse.Namespace) -> None:
+    try:
+        search_htmls = [
+            Path(path).read_text(encoding="utf-8")
+            for path in args.search_html
+        ] or None
+    except OSError as exc:
+        raise SystemExit(f"Error: {exc}") from exc
+    result = discover_sources(
+        args.brief,
+        title=args.title,
+        topic=args.topic,
+        ticker=args.ticker,
+        max_results=args.max_results,
+        max_queries=args.max_queries,
+        search_htmls=search_htmls,
+    )
+    write_discovery_registry(args.out, result.registry)
+    for warning in result.warnings:
+        print(f"Warning: {warning}", file=sys.stderr)
+    print(f"Wrote discovered source registry: {args.out}")
+    if not result.candidates:
+        print("No candidate sources found. Review search connectivity or provide source URLs manually.")
+        return
+    print("Candidate sources:")
+    for candidate in result.candidates:
+        print(
+            f"- {candidate.name} | {candidate.category} | reliability {candidate.reliability:.2f} | {candidate.url}"
+        )
 
 
 def cmd_import_evidence(args: argparse.Namespace) -> None:

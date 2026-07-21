@@ -12,7 +12,7 @@ Use this skill when the user asks to create, audit, update, or review a financia
 1. Treat the user's natural-language request as the brief.
 2. Create a signal workspace with `fintrace from-brief`.
 3. Read the generated `*.agent_brief.md` and `*.source_plan.md`.
-4. Prefer `fintrace source-pack` for common source sets; otherwise follow the source plan's search queries and triage rules.
+4. Prefer `fintrace source-pack` for common source sets; otherwise run `fintrace discover` or follow the source plan's search queries and triage rules.
 5. Add selected URLs to `sources.json`, then use `fintrace ingest` for feed/page screening.
 6. If the agent has semantically read PDFs, tables, portals, or complex pages, write structured evidence JSON and import it with `fintrace import-evidence`.
 7. Show candidate evidence before applying it unless the user explicitly asked for automatic updates.
@@ -46,6 +46,12 @@ Create only a source discovery plan:
 
 ```bash
 fintrace source-plan "User's research request" --out path/to/source_plan.md
+```
+
+Discover and score candidate sources:
+
+```bash
+fintrace discover "User's research request" --out path/to/discovered.sources.json
 ```
 
 Manual signal creation:
@@ -136,6 +142,7 @@ fintrace graph path/to/signal.json --out path/to/graph.html
 - Use counter evidence generously; a useful signal is allowed to be wrong quickly.
 - In agent environments, use the user's own words as the starting brief and preserve them in `*.agent_brief.md`.
 - Use `*.source_plan.md` as the search and source-triage checklist before browsing.
+- Use `fintrace discover` to generate a first-pass `sources.json`; review low-reliability or secondary sources before ingesting.
 - Let the agent handle semantic reading for PDFs, tables, portals, and complex pages. Use `import-evidence` to persist the agent's structured conclusions.
 - If sources are missing, try `source-pack list` first; otherwise follow `source-plan`, find source URLs, update `sources.json`, then run ingest.
 - For any language not covered by built-in terms, add user-language `support_terms`, `counter_terms`, and `finance_terms` before ingesting.
