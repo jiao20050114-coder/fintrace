@@ -13,11 +13,12 @@ Use this skill when the user asks to create, audit, update, or review a financia
 2. Create a signal workspace with `fintrace from-brief`.
 3. Read the generated `*.agent_brief.md`.
 4. Locate primary and high-reliability sources when the generated `sources.json` has no URLs.
-5. Use `fintrace ingest` to fetch configured sources and screen them automatically.
-6. Show candidate evidence before applying it unless the user explicitly asked for automatic updates.
-7. Run `fintrace status` after material evidence changes.
-8. Render a Markdown report with `fintrace report` when the user needs a human-readable memo.
-9. Render an HTML evidence graph with `fintrace graph` when the user needs to inspect the logic visually.
+5. If the agent has semantically read the material, write structured evidence JSON and import it with `fintrace import-evidence`.
+6. Use `fintrace ingest` when FinTrace should fetch configured sources and screen them automatically.
+7. Show candidate evidence before applying it unless the user explicitly asked for automatic updates.
+8. Run `fintrace status` after material evidence changes.
+9. Render a Markdown report with `fintrace report` when the user needs a human-readable memo.
+10. Render an HTML evidence graph with `fintrace graph` when the user needs to inspect the logic visually.
 
 ## Commands
 
@@ -85,6 +86,30 @@ Append ingested evidence:
 fintrace ingest path/to/signal.json --sources path/to/sources.json --query "topic keywords" --apply
 ```
 
+Import structured evidence produced by the agent:
+
+```bash
+fintrace import-evidence path/to/signal.json --file path/to/agent_evidence.json --evaluate
+```
+
+Expected evidence JSON:
+
+```json
+{
+  "evidence": [
+    {
+      "kind": "support",
+      "text": "Evidence claim.",
+      "source": "Source name",
+      "url": "https://example.com",
+      "observed_at": "2026-07-22",
+      "weight": 1.2,
+      "reason": "Why this supports or weakens the signal."
+    }
+  ]
+}
+```
+
 Render:
 
 ```bash
@@ -103,6 +128,7 @@ fintrace graph path/to/signal.json --out path/to/graph.html
 - Prefer verifiable primary sources for filings, financial statements, announcements, and transcripts.
 - Use counter evidence generously; a useful signal is allowed to be wrong quickly.
 - In agent environments, use the user's own words as the starting brief and preserve them in `*.agent_brief.md`.
+- Let the agent handle semantic reading. Use `import-evidence` to persist the agent's structured conclusions.
 - If sources are missing, find source URLs first, update `sources.json`, then run ingest.
 - For any language not covered by built-in terms, add user-language `support_terms`, `counter_terms`, and `finance_terms` before ingesting.
 - Do not present FinTrace output as investment advice.

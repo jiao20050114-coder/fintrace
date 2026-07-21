@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from fintrace.agent_import import import_agent_evidence, load_agent_evidence
 from fintrace.brief import create_brief_pack
 from fintrace.extractor import extract_evidence_candidates, read_source_text
 from fintrace.ledger import (
@@ -102,6 +103,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Optional source URL, or NAME=URL. Can be repeated.",
     )
     brief_parser.set_defaults(func=cmd_from_brief)
+
+    import_parser = subparsers.add_parser("import-evidence", help="Import structured evidence produced by an agent or LLM.")
+    import_parser.add_argument("path")
+    import_parser.add_argument("--file", required=True, help="Evidence JSON file.")
+    import_parser.add_argument("--default-source")
+    import_parser.add_argument("--no-reason", action="store_true", help="Do not append item reasons to evidence text.")
+    import_parser.add_argument("--evaluate", action="store_true", help="Evaluate signal status after import.")
+    import_parser.set_defaults(func=cmd_import_evidence)
 
     demo_parser = subparsers.add_parser("demo", help="Create a runnable NVDA demo signal.")
     demo_parser.add_argument("--out-dir", default=".")
@@ -265,6 +274,26 @@ def cmd_from_brief(args: argparse.Namespace) -> None:
     print(f"Sources: {target_dir / f'{pack.slug}.sources.json'}")
     print(f"Agent brief: {target_dir / f'{pack.slug}.agent_brief.md'}")
     print(f"Include terms: {', '.join(pack.include_terms[:12])}")
+
+
+def cmd_import_evidence(args: argparse.Namespace) -> None:
+    signal = load_signal(args.path)
+    raw_items = load_agent_evidence(args.file)
+    result = import_agent_evidence(
+        signal,
+        raw_items,
+        default_source=args.default_source,
+        include_reason=not args.no_reason,
+        evaluate=args.evaluate,
+    )
+    save_signal(signal, args.path)
+    print(f"Imported {len(result.evidence)} evidence items into {args.path}")
+    if result.update_event:
+        print(
+            f"Evaluated: {result.update_event.previous_status.value} -> "
+            f"{result.update_event.current_status.value}"
+        )
+        print(f"Why: {result.update_event.summary}")
 
 
 def cmd_demo(args: argparse.Namespace) -> None:

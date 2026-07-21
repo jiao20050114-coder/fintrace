@@ -60,6 +60,7 @@ Then run:
 fintrace demo --out-dir examples
 fintrace from-brief "Track Dymon Asia AUM, fund performance, and regulatory risk" --out-dir work/dymon-asia
 fintrace status examples/nvda_ai_demand.signal.json
+fintrace import-evidence examples/nvda_ai_demand.signal.json --file examples/agent_evidence.example.json --evaluate
 fintrace extract examples/nvda_ai_demand.signal.json --file examples/nvda_update.txt --source "Example update"
 fintrace ingest examples/nvda_ai_demand.signal.json --sources examples/sources.example.json
 fintrace report examples/nvda_ai_demand.signal.json --out examples/nvda_ai_demand.report.md
@@ -267,6 +268,34 @@ Use `from-brief` as the first step. It turns the user request into a small works
 - Run `fintrace ingest` to screen those sources.
 - Show the candidate evidence to the user.
 - Apply evidence only after review or explicit instruction.
+
+When the agent has already read and understood source material, use `import-evidence` instead of asking FinTrace to classify language itself:
+
+```bash
+fintrace import-evidence work/dymon-asia/dymon-asia.signal.json \
+  --file work/dymon-asia/agent_evidence.json \
+  --evaluate
+```
+
+Agent evidence JSON can be an array or an object with an `evidence` array:
+
+```json
+{
+  "evidence": [
+    {
+      "kind": "support",
+      "text": "AUM increased for the third consecutive month, indicating improving investor demand.",
+      "source": "Monthly fund factsheet",
+      "url": "https://example.com/factsheet",
+      "observed_at": "2026-07-22",
+      "weight": 1.3,
+      "reason": "This supports the thesis that investor demand is improving."
+    }
+  ]
+}
+```
+
+This keeps the architecture simple: the agent handles semantic understanding, while FinTrace stores evidence, updates status, and renders the ledger.
 
 ## Why This Exists
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- Added `fintrace import-evidence` for structured evidence produced by agents or LLMs.
+- Added wrapped-object and array JSON import formats.
+- Added optional post-import signal evaluation.
+
 ## 0.5.0
 
 - Added multilingual extraction support with built-in English, Chinese, Japanese, and Korean finance terms.
