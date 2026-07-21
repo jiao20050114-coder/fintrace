@@ -1,0 +1,192 @@
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from fintrace.ledger import (
+    add_evidence,
+    load_signal,
+    record_evaluation,
+    render_html_graph,
+    render_markdown,
+    save_signal,
+)
+from fintrace.schema import EvidenceKind, Signal, WatchItem
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="fintrace",
+        description="Build auditable financial signal cards with evidence ledgers.",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    init_parser = subparsers.add_parser("init", help="Create a new signal card JSON file.")
+    init_parser.add_argument("path", help="Where to write the signal card.")
+    init_parser.add_argument("--title", required=True)
+    init_parser.add_argument("--hypothesis", required=True)
+    init_parser.add_argument("--topic")
+    init_parser.add_argument("--ticker")
+    init_parser.set_defaults(func=cmd_init)
+
+    add_parser = subparsers.add_parser("add-evidence", help="Append evidence to a signal card.")
+    add_parser.add_argument("path")
+    add_parser.add_argument("--kind", choices=[item.value for item in EvidenceKind], default=EvidenceKind.SUPPORT.value)
+    add_parser.add_argument("--source", required=True)
+    add_parser.add_argument("--text", required=True)
+    add_parser.add_argument("--url")
+    add_parser.add_argument("--observed-at")
+    add_parser.add_argument("--weight", type=float, default=1.0)
+    add_parser.set_defaults(func=cmd_add_evidence)
+
+    watch_parser = subparsers.add_parser("add-watch", help="Append a watchlist metric to a signal card.")
+    watch_parser.add_argument("path")
+    watch_parser.add_argument("--metric", required=True)
+    watch_parser.add_argument("--why", required=True)
+    watch_parser.add_argument("--source-hint")
+    watch_parser.set_defaults(func=cmd_add_watch)
+
+    status_parser = subparsers.add_parser("status", help="Evaluate and record the current signal status.")
+    status_parser.add_argument("path")
+    status_parser.set_defaults(func=cmd_status)
+
+    report_parser = subparsers.add_parser("report", help="Render a Markdown signal report.")
+    report_parser.add_argument("path")
+    report_parser.add_argument("--out", required=True)
+    report_parser.set_defaults(func=cmd_report)
+
+    graph_parser = subparsers.add_parser("graph", help="Render a standalone HTML evidence graph.")
+    graph_parser.add_argument("path")
+    graph_parser.add_argument("--out", required=True)
+    graph_parser.set_defaults(func=cmd_graph)
+
+    demo_parser = subparsers.add_parser("demo", help="Create a runnable NVDA demo signal.")
+    demo_parser.add_argument("--out-dir", default=".")
+    demo_parser.set_defaults(func=cmd_demo)
+
+    args = parser.parse_args(argv)
+    args.func(args)
+    return 0
+
+
+def cmd_init(args: argparse.Namespace) -> None:
+    signal = Signal(
+        title=args.title,
+        hypothesis=args.hypothesis,
+        topic=args.topic,
+        ticker=args.ticker,
+    )
+    save_signal(signal, args.path)
+    print(f"Created signal card: {args.path}")
+
+
+def cmd_add_evidence(args: argparse.Namespace) -> None:
+    signal = load_signal(args.path)
+    evidence = add_evidence(
+        signal,
+        text=args.text,
+        source=args.source,
+        kind=EvidenceKind(args.kind),
+        url=args.url,
+        observed_at=args.observed_at,
+        weight=args.weight,
+    )
+    save_signal(signal, args.path)
+    print(f"Added {evidence.kind.value} evidence {evidence.id} to {args.path}")
+
+
+def cmd_add_watch(args: argparse.Namespace) -> None:
+    signal = load_signal(args.path)
+    signal.watchlist.append(
+        WatchItem(metric=args.metric, why=args.why, source_hint=args.source_hint)
+    )
+    save_signal(signal, args.path)
+    print(f"Added watch item to {args.path}: {args.metric}")
+
+
+def cmd_status(args: argparse.Namespace) -> None:
+    signal = load_signal(args.path)
+    event = record_evaluation(signal)
+    save_signal(signal, args.path)
+    print(f"Signal: {signal.title}")
+    print(f"Previous: {event.previous_status.value}")
+    print(f"Current: {event.current_status.value}")
+    print(f"Confidence: {signal.confidence:.2f}")
+    print(f"Why: {event.summary}")
+
+
+def cmd_report(args: argparse.Namespace) -> None:
+    signal = load_signal(args.path)
+    Path(args.out).write_text(render_markdown(signal), encoding="utf-8")
+    print(f"Wrote report: {args.out}")
+
+
+def cmd_graph(args: argparse.Namespace) -> None:
+    signal = load_signal(args.path)
+    Path(args.out).write_text(render_html_graph(signal), encoding="utf-8")
+    print(f"Wrote evidence graph: {args.out}")
+
+
+def cmd_demo(args: argparse.Namespace) -> None:
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    signal_path = out_dir / "nvda_ai_demand.signal.json"
+    report_path = out_dir / "nvda_ai_demand.report.md"
+    graph_path = out_dir / "nvda_ai_demand.graph.html"
+
+    signal = Signal(
+        title="NVDA AI Demand",
+        hypothesis="AI infrastructure demand continues to support NVDA data center revenue growth.",
+        topic="AI infrastructure",
+        ticker="NVDA",
+        watchlist=[
+            WatchItem(
+                metric="Data center revenue growth",
+                why="Confirms whether AI accelerator demand is still translating into reported revenue",
+                source_hint="Quarterly earnings release",
+            ),
+            WatchItem(
+                metric="Hyperscaler capex guidance",
+                why="Tests whether major customers are still expanding AI infrastructure budgets",
+                source_hint="Earnings calls from MSFT, AMZN, GOOGL, META",
+            ),
+        ],
+    )
+    add_evidence(
+        signal,
+        text="Management commentary indicates continued demand for accelerated computing capacity.",
+        source="Example earnings call note",
+        kind=EvidenceKind.SUPPORT,
+        url=None,
+        observed_at="2026-07-21",
+        weight=1.2,
+    )
+    add_evidence(
+        signal,
+        text="Export restrictions remain a potential headwind for China-related revenue.",
+        source="Example regulatory risk note",
+        kind=EvidenceKind.COUNTER,
+        url=None,
+        observed_at="2026-07-21",
+        weight=0.7,
+    )
+    add_evidence(
+        signal,
+        text="Cloud capex plans from major customers remain elevated.",
+        source="Example peer capex tracker",
+        kind=EvidenceKind.SUPPORT,
+        url=None,
+        observed_at="2026-07-21",
+        weight=1.1,
+    )
+    record_evaluation(signal)
+    save_signal(signal, signal_path)
+    report_path.write_text(render_markdown(signal), encoding="utf-8")
+    graph_path.write_text(render_html_graph(signal), encoding="utf-8")
+    print(f"Wrote demo signal: {signal_path}")
+    print(f"Wrote demo report: {report_path}")
+    print(f"Wrote demo graph: {graph_path}")
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

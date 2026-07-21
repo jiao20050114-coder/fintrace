@@ -1,0 +1,60 @@
+{
+  "id": "sig_demo_nvda",
+  "title": "NVDA AI Demand",
+  "hypothesis": "AI infrastructure demand continues to support NVDA data center revenue growth.",
+  "topic": "AI infrastructure",
+  "ticker": "NVDA",
+  "status": "strengthened",
+  "confidence": 0.7667,
+  "evidence": [
+    {
+      "text": "Management commentary indicates continued demand for accelerated computing capacity.",
+      "source": "Example earnings call note",
+      "kind": "support",
+      "url": null,
+      "observed_at": "2026-07-21",
+      "weight": 1.2,
+      "id": "ev_demo_support_1"
+    },
+    {
+      "text": "Cloud capex plans from major customers remain elevated.",
+      "source": "Example peer capex tracker",
+      "kind": "support",
+      "url": null,
+      "observed_at": "2026-07-21",
+      "weight": 1.1,
+      "id": "ev_demo_support_2"
+    },
+    {
+      "text": "Export restrictions remain a potential headwind for China-related revenue.",
+      "source": "Example regulatory risk note",
+      "kind": "counter",
+      "url": null,
+      "observed_at": "2026-07-21",
+      "weight": 0.7,
+      "id": "ev_demo_counter_1"
+    }
+  ],
+  "watchlist": [
+    {
+      "metric": "Data center revenue growth",
+      "why": "Confirms whether AI accelerator demand is still translating into reported revenue",
+      "source_hint": "Quarterly earnings release"
+    },
+    {
+      "metric": "Hyperscaler capex guidance",
+      "why": "Tests whether major customers are still expanding AI infrastructure budgets",
+      "source_hint": "Earnings calls from MSFT, AMZN, GOOGL, META"
+    }
+  ],
+  "updates": [
+    {
+      "previous_status": "draft",
+      "current_status": "strengthened",
+      "summary": "Support score 2.3, counter score 0.7, neutral evidence 0. Net evidence points to 'strengthened'.",
+      "created_at": "2026-07-21T00:00:00+00:00"
+    }
+  ],
+  "created_at": "2026-07-21T00:00:00+00:00",
+  "updated_at": "2026-07-21T00:00:00+00:00"
+}

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NVDA AI Demand - FinTrace Evidence Graph</title>
+  <style>
+    :root {
+      --paper: #f6f8f4;
+      --ink: #191c20;
+      --muted: #66706b;
+      --line: #d7ddd5;
+      --panel: #ffffff;
+      --support: #007a5c;
+      --counter: #b23a48;
+      --neutral: #6d7280;
+      --watch: #bd7b00;
+      --accent: #335cbb;
+      --shadow: 0 18px 50px rgba(25, 28, 32, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(90deg, rgba(25, 28, 32, 0.035) 1px, transparent 1px),
+        linear-gradient(180deg, rgba(25, 28, 32, 0.035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 28px 28px;
+      color: var(--ink);
+      font-family: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+    }
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 34px 0 42px;
+    }
+    header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: end;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 22px;
+      margin-bottom: 26px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4.5vw, 4.8rem);
+      line-height: 0.92;
+      letter-spacing: 0;
+      max-width: 820px;
+    }
+    .meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+    }
+    .pill {
+      border: 1px solid var(--ink);
+      background: var(--panel);
+      padding: 7px 9px;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+    .status-strengthened { color: var(--support); }
+    .status-weakened, .status-falsified { color: var(--counter); }
+    .status-active { color: var(--accent); }
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.9fr) minmax(360px, 1.35fr) minmax(240px, 0.95fr);
+      gap: 18px;
+      align-items: start;
+    }
+    section {
+      min-width: 0;
+    }
+    .block {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      color: var(--muted);
+    }
+    p {
+      margin: 0;
+      line-height: 1.45;
+      font-size: 1.02rem;
+    }
+    .scoreboard {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .score {
+      border-top: 3px solid var(--neutral);
+      padding-top: 8px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .score strong {
+      display: block;
+      font-size: 1.35rem;
+    }
+    .score span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+    }
+    .score.support { border-color: var(--support); }
+    .score.counter { border-color: var(--counter); }
+    .score.neutral { border-color: var(--neutral); }
+    .evidence-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .node {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--neutral);
+      padding: 14px 14px 12px;
+    }
+    .node.support { border-left-color: var(--support); }
+    .node.counter { border-left-color: var(--counter); }
+    .node.neutral { border-left-color: var(--neutral); }
+    .node p {
+      font-size: 0.98rem;
+    }
+    .source {
+      margin-top: 10px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .source a {
+      color: var(--accent);
+      text-decoration-thickness: 2px;
+    }
+    .rail {
+      display: grid;
+      gap: 12px;
+    }
+    .watch {
+      border-left: 5px solid var(--watch);
+    }
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+    .event {
+      border-left: 3px solid var(--accent);
+      padding-left: 10px;
+    }
+    .event time {
+      display: block;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.7rem;
+      margin-bottom: 4px;
+    }
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.74rem;
+    }
+    @media (max-width: 900px) {
+      header, .layout {
+        grid-template-columns: 1fr;
+      }
+      .meta {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>NVDA AI Demand</h1>
+      </div>
+      <div class="meta">
+        <span class="pill status-strengthened">strengthened</span>
+        <span class="pill">confidence 0.77</span>
+        <span class="pill">NVDA</span>
+      </div>
+    </header>
+    <div class="layout">
+      <section class="block">
+        <h2>Core Hypothesis</h2>
+        <p>AI infrastructure demand continues to support NVDA data center revenue growth.</p>
+        <div class="scoreboard">
+          <div class="score support"><strong>2.3</strong><span>support</span></div>
+          <div class="score counter"><strong>0.7</strong><span>counter</span></div>
+          <div class="score neutral"><strong>0.0</strong><span>neutral</span></div>
+        </div>
+      </section>
+      <section>
+        <div class="evidence-grid">
+          <div class="block"><h2>Supporting Evidence</h2>
+          <article class="node support">
+            <p>Management commentary indicates continued demand for accelerated computing capacity.</p>
+            <div class="source">Source: Example earnings call note<br>Observed: 2026-07-21 | Weight: 1.2</div>
+          </article>
+
+
+          <article class="node support">
+            <p>Cloud capex plans from major customers remain elevated.</p>
+            <div class="source">Source: Example peer capex tracker<br>Observed: 2026-07-21 | Weight: 1.1</div>
+          </article>
+</div>
+          <div class="block"><h2>Counter Evidence</h2>
+          <article class="node counter">
+            <p>Export restrictions remain a potential headwind for China-related revenue.</p>
+            <div class="source">Source: Example regulatory risk note<br>Observed: 2026-07-21 | Weight: 0.7</div>
+          </article>
+</div>
+          <div class="block"><h2>Neutral Evidence</h2><p class="empty">None recorded.</p></div>
+        </div>
+      </section>
+      <section class="rail">
+        <div class="block">
+          <h2>Watchlist</h2>
+          
+          <article class="node watch">
+            <p><strong>Data center revenue growth</strong></p>
+            <div class="source">Confirms whether AI accelerator demand is still translating into reported revenue<br>Source hint: Quarterly earnings release</div>
+          </article>
+
+
+          <article class="node watch">
+            <p><strong>Hyperscaler capex guidance</strong></p>
+            <div class="source">Tests whether major customers are still expanding AI infrastructure budgets<br>Source hint: Earnings calls from MSFT, AMZN, GOOGL, META</div>
+          </article>
+
+        </div>
+        <div class="block">
+          <h2>Update History</h2>
+          <div class="timeline">
+          <div class="event">
+            <time>2026-07-21T00:00:00+00:00</time>
+            <p>draft -> strengthened</p>
+            <div class="source">Support score 2.3, counter score 0.7, neutral evidence 0. Net evidence points to &#x27;strengthened&#x27;.</div>
+          </div>
+</div>
+        </div>
+      </section>
+    </div>
+    <footer>Generated by FinTrace. Research workflow output, not investment advice.</footer>
+  </main>
+</body>
+</html>
