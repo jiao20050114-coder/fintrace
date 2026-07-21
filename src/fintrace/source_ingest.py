@@ -21,6 +21,9 @@ class Source:
     reliability: float = 0.7
     include_terms: list[str] = field(default_factory=list)
     exclude_terms: list[str] = field(default_factory=list)
+    support_terms: list[str] = field(default_factory=list)
+    counter_terms: list[str] = field(default_factory=list)
+    finance_terms: list[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(cls, data: dict[str, object], *, base_dir: Path | None = None) -> "Source":
@@ -37,6 +40,9 @@ class Source:
             reliability=float(data.get("reliability", 0.7)),
             include_terms=[str(item) for item in data.get("include_terms", [])],
             exclude_terms=[str(item) for item in data.get("exclude_terms", [])],
+            support_terms=[str(item) for item in data.get("support_terms", [])],
+            counter_terms=[str(item) for item in data.get("counter_terms", [])],
+            finance_terms=[str(item) for item in data.get("finance_terms", [])],
         )
 
 
@@ -82,7 +88,14 @@ def ingest_sources(
             relevance_score = score_relevance(document, source=source, query_terms=query_terms)
             if relevance_score <= 0:
                 continue
-            for candidate in extract_evidence_candidates(document.text, max_items=3, min_score=min_score):
+            for candidate in extract_evidence_candidates(
+                document.text,
+                max_items=3,
+                min_score=min_score,
+                support_terms=source.support_terms,
+                counter_terms=source.counter_terms,
+                finance_terms=source.finance_terms,
+            ):
                 adjusted_weight = min(
                     2.0,
                     round(candidate.weight * (0.75 + (0.45 * source.reliability)), 2),

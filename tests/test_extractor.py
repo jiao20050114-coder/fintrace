@@ -35,3 +35,29 @@ def test_negated_support_sentence_is_neutral():
     )
 
     assert candidates[0].kind == EvidenceKind.NEUTRAL
+
+
+def test_extract_chinese_support_and_counter_evidence():
+    text = "公司订单增长，收入改善，需求强劲。行业竞争加剧，毛利率承压。"
+
+    candidates = extract_evidence_candidates(text, max_items=4)
+
+    kinds = {candidate.kind for candidate in candidates}
+    assert EvidenceKind.SUPPORT in kinds
+    assert EvidenceKind.COUNTER in kinds
+
+
+def test_extract_japanese_support_evidence():
+    candidates = extract_evidence_candidates("売上高成長が続き、需要も強い。")
+
+    assert candidates[0].kind == EvidenceKind.SUPPORT
+
+
+def test_custom_multilingual_terms_are_used():
+    candidates = extract_evidence_candidates(
+        "客户续约率明显改善。",
+        support_terms=["续约率改善"],
+        finance_terms=["客户"],
+    )
+
+    assert candidates[0].kind == EvidenceKind.SUPPORT

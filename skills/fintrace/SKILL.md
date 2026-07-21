@@ -69,6 +69,16 @@ Fetch and screen configured sources:
 fintrace ingest path/to/signal.json --sources path/to/sources.json --query "topic keywords"
 ```
 
+For non-English briefs or sources, add language-specific terms to `sources.json`:
+
+```json
+{
+  "support_terms": ["订单增长", "売上高成長", "매출 성장"],
+  "counter_terms": ["毛利率承压", "リスク", "위험"],
+  "finance_terms": ["收入", "売上高", "매출"]
+}
+```
+
 Append ingested evidence:
 
 ```bash
@@ -94,4 +104,5 @@ fintrace graph path/to/signal.json --out path/to/graph.html
 - Use counter evidence generously; a useful signal is allowed to be wrong quickly.
 - In agent environments, use the user's own words as the starting brief and preserve them in `*.agent_brief.md`.
 - If sources are missing, find source URLs first, update `sources.json`, then run ingest.
+- For any language not covered by built-in terms, add user-language `support_terms`, `counter_terms`, and `finance_terms` before ingesting.
 - Do not present FinTrace output as investment advice.

@@ -152,6 +152,17 @@ fintrace extract examples/robotics.signal.json \
   --apply
 ```
 
+For non-English or domain-specific language, add custom terms:
+
+```bash
+fintrace extract examples/robotics.signal.json \
+  --text "公司订单增长，收入改善，需求强劲。行业竞争加剧，毛利率承压。" \
+  --source "Chinese update" \
+  --support-term "订单增长" \
+  --counter-term "毛利率承压" \
+  --finance-term "收入"
+```
+
 Automatically fetch and screen configured sources:
 
 ```bash
@@ -216,6 +227,9 @@ Each source can define:
 - `reliability`: source quality score from `0.0` to `1.0`
 - `include_terms`: terms that raise relevance
 - `exclude_terms`: terms that reject noisy documents
+- `support_terms`: custom support-evidence terms in any language
+- `counter_terms`: custom counter-evidence terms in any language
+- `finance_terms`: custom domain terms in any language
 
 Example:
 
@@ -229,13 +243,18 @@ Example:
       "url": "https://example.com/rss",
       "reliability": 0.9,
       "include_terms": ["revenue", "guidance", "orders"],
-      "exclude_terms": ["sponsored"]
+      "exclude_terms": ["sponsored"],
+      "support_terms": ["订单增长", "売上高成長", "매출 성장"],
+      "counter_terms": ["毛利率承压", "リスク", "위험"],
+      "finance_terms": ["收入", "売上高", "매출"]
     }
   ]
 }
 ```
 
 The ingest ranking combines source reliability, signal relevance, configured terms, and extracted evidence score. Like `extract`, it previews results by default and only writes to the ledger with `--apply`.
+
+FinTrace is Unicode-first and can ingest text in any language. The built-in extractor includes common English, Chinese, Japanese, and Korean finance terms. For other languages or specialized domains, pass custom terms in the CLI or source registry. For deeper cross-language interpretation, pair this workflow with an LLM in the agent layer.
 
 ## Agent And Skill Mode
 

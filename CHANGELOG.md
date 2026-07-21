@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+
+- Added multilingual extraction support with built-in English, Chinese, Japanese, and Korean finance terms.
+- Added custom `support_terms`, `counter_terms`, and `finance_terms` for CLI extraction and source registries.
+- Improved CJK term matching and sentence splitting for non-English documents.
+
 ## 0.4.0
 
 - Added `fintrace from-brief` for Codex, Claude, WorkBuddy, and other agent environments.

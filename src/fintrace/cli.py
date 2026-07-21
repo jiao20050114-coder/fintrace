@@ -72,6 +72,9 @@ def main(argv: list[str] | None = None) -> int:
     extract_parser.add_argument("--source", required=True)
     extract_parser.add_argument("--max-items", type=int, default=8)
     extract_parser.add_argument("--min-score", type=int, default=1)
+    extract_parser.add_argument("--support-term", action="append", default=[], help="Extra support evidence term. Can be repeated.")
+    extract_parser.add_argument("--counter-term", action="append", default=[], help="Extra counter evidence term. Can be repeated.")
+    extract_parser.add_argument("--finance-term", action="append", default=[], help="Extra finance/domain term. Can be repeated.")
     extract_parser.add_argument("--apply", action="store_true", help="Append extracted candidates to the signal card.")
     extract_parser.set_defaults(func=cmd_extract)
 
@@ -174,6 +177,9 @@ def cmd_extract(args: argparse.Namespace) -> None:
         text,
         max_items=args.max_items,
         min_score=args.min_score,
+        support_terms=args.support_term,
+        counter_terms=args.counter_term,
+        finance_terms=args.finance_term,
     )
 
     if not candidates:

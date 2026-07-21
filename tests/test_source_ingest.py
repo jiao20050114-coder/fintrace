@@ -111,3 +111,20 @@ def test_load_sources_resolves_relative_paths(tmp_path):
     sources = load_sources(config)
 
     assert sources[0].url == str(tmp_path / "feed.xml")
+
+
+def test_source_registry_accepts_custom_language_terms():
+    source = Source.from_dict(
+        {
+            "id": "zh",
+            "name": "Chinese Source",
+            "url": "feed.xml",
+            "support_terms": ["续约率改善"],
+            "counter_terms": ["坏账上升"],
+            "finance_terms": ["客户"],
+        }
+    )
+
+    assert source.support_terms == ["续约率改善"]
+    assert source.counter_terms == ["坏账上升"]
+    assert source.finance_terms == ["客户"]

@@ -7,7 +7,10 @@
       "url": "demo_ai_infra_feed.xml",
       "reliability": 0.85,
       "include_terms": ["AI", "capex", "revenue", "guidance"],
-      "exclude_terms": ["rumor", "hiring"]
+      "exclude_terms": ["rumor", "hiring"],
+      "support_terms": ["订单增长", "收入改善", "売上高成長", "매출 성장"],
+      "counter_terms": ["毛利率承压", "风险", "リスク", "위험"],
+      "finance_terms": ["收入", "订单", "需要", "매출"]
     },
     {
       "id": "demo-risk-feed",
@@ -16,7 +19,10 @@
       "url": "demo_risk_feed.xml",
       "reliability": 0.75,
       "include_terms": ["restriction", "sales", "revenue"],
-      "exclude_terms": ["sponsored"]
+      "exclude_terms": ["sponsored"],
+      "support_terms": [],
+      "counter_terms": ["限制", "承压", "制限", "제한"],
+      "finance_terms": ["收入", "销售", "売上高", "매출"]
     }
   ]
 }
