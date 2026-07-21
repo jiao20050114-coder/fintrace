@@ -43,6 +43,15 @@ def test_write_source_pack_round_trips(tmp_path):
     assert json.loads(path.read_text(encoding="utf-8"))["sources"][0]["id"] == "nvidia-ir-rss"
 
 
+def test_fund_manager_pack_covers_specialized_private_fund_terms():
+    registry = render_source_pack("fund-manager")
+    template = registry["source_template"]
+
+    assert "side pocket" in template["counter_terms"]
+    assert "continuation vehicle" in template["finance_terms"]
+    assert "gate provisions were not triggered" in template["support_terms"]
+
+
 def test_get_source_pack_rejects_unknown_pack():
     with pytest.raises(ValueError, match="Unknown source pack"):
         get_source_pack("missing")

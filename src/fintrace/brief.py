@@ -130,19 +130,23 @@ def infer_subject(brief: str) -> str:
     if after_action:
         candidate = after_action.group(1).strip()
         if candidate:
-            return candidate
+            return _clean_subject(candidate)
 
     latin_chunks = re.findall(r"\b[A-Z][A-Za-z0-9&.-]*(?:\s+[A-Z][A-Za-z0-9&.-]*){0,4}\b", cleaned)
     ignored = {"I", "AI", "ETF", "SEC", "RSS", "MCP", "CLI", "URL", "Track", "Monitor", "Analyze"}
     for chunk in latin_chunks:
         if chunk not in ignored and not re.fullmatch(r"[A-Z]{1,5}", chunk):
-            return chunk.strip()
+            return _clean_subject(chunk)
 
     chinese_match = re.search(r"(?:跟踪|分析|研究|关注|监控)([^，。,.]{2,24})", cleaned)
     if chinese_match:
-        return chinese_match.group(1).strip()
+        return _clean_subject(chinese_match.group(1))
 
-    return cleaned[:60] if cleaned else "Untitled Signal"
+    return _clean_subject(cleaned[:60]) if cleaned else "Untitled Signal"
+
+
+def _clean_subject(value: str) -> str:
+    return value.strip(" \t\r\n:：,，.。;；")
 
 
 def infer_topic(brief: str, subject: str) -> str:

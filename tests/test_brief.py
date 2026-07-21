@@ -5,6 +5,10 @@ def test_infer_subject_from_latin_entity():
     assert infer_subject("Track Dymon Asia recent fund performance and risk signals") == "Dymon Asia"
 
 
+def test_infer_subject_strips_trailing_colon():
+    assert infer_subject("Track Dymon Asia platform resilience: AUM quality and gate provisions") == "Dymon Asia platform resilience"
+
+
 def test_infer_subject_from_chinese_brief():
     assert infer_subject("帮我跟踪机器人行业订单变化") == "机器人行业订单变化"
 
