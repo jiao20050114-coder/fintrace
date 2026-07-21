@@ -59,6 +59,7 @@ Then run:
 ```bash
 fintrace demo --out-dir examples
 fintrace status examples/nvda_ai_demand.signal.json
+fintrace extract examples/nvda_ai_demand.signal.json --file examples/nvda_update.txt --source "Example update"
 fintrace report examples/nvda_ai_demand.signal.json --out examples/nvda_ai_demand.report.md
 fintrace graph examples/nvda_ai_demand.signal.json --out examples/nvda_ai_demand.graph.html
 ```
@@ -107,6 +108,23 @@ Evaluate:
 fintrace status examples/robotics.signal.json
 ```
 
+Extract evidence from a text file:
+
+```bash
+fintrace extract examples/robotics.signal.json \
+  --file examples/robotics_update.txt \
+  --source "Industry update"
+```
+
+Append the extracted candidates:
+
+```bash
+fintrace extract examples/robotics.signal.json \
+  --file examples/robotics_update.txt \
+  --source "Industry update" \
+  --apply
+```
+
 Render a report:
 
 ```bash
@@ -130,6 +148,18 @@ FinTrace uses a simple transparent scoring model in the first release:
 - `falsified`: counter evidence clearly overwhelms support evidence
 
 The model is intentionally simple so analysts can inspect and challenge it. Future versions can add source quality, evidence freshness, topic-specific thresholds, and LLM-assisted extraction.
+
+## Evidence Extraction
+
+`fintrace extract` is a lightweight first step toward semi-automated research tracking. It reads text from one source:
+
+- `--text`
+- `--file`
+- `--url`
+
+By default it prints candidate evidence without changing the signal card. Add `--apply` to append the candidates.
+
+The current extractor is rule-based and dependency-free. It looks for finance terms plus support or counter-evidence language, then assigns a conservative weight. This keeps the workflow inspectable and makes it easy to replace the extraction backend with an LLM later.
 
 ## Why This Exists
 

@@ -14,8 +14,9 @@ Use this skill when the user asks to create, audit, update, or review a financia
 3. Record source, observed date, and evidence weight for every claim.
 4. Identify watchlist metrics that could strengthen, weaken, or falsify the signal.
 5. Run `fintrace status` after material evidence changes.
-6. Render a Markdown report with `fintrace report` when the user needs a human-readable memo.
-7. Render an HTML evidence graph with `fintrace graph` when the user needs to inspect the logic visually.
+6. Use `fintrace extract` to turn raw text, files, or URLs into evidence candidates before manually adding evidence.
+7. Render a Markdown report with `fintrace report` when the user needs a human-readable memo.
+8. Render an HTML evidence graph with `fintrace graph` when the user needs to inspect the logic visually.
 
 ## Commands
 
@@ -41,6 +42,18 @@ Evaluate:
 
 ```bash
 fintrace status path/to/signal.json
+```
+
+Extract candidate evidence:
+
+```bash
+fintrace extract path/to/signal.json --file path/to/update.txt --source "Source name"
+```
+
+Append extracted candidates:
+
+```bash
+fintrace extract path/to/signal.json --file path/to/update.txt --source "Source name" --apply
 ```
 
 Render:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from fintrace.extractor import extract_evidence_candidates, read_source_text
 from fintrace.ledger import (
     add_evidence,
     load_signal,
@@ -59,6 +60,18 @@ def main(argv: list[str] | None = None) -> int:
     graph_parser.add_argument("path")
     graph_parser.add_argument("--out", required=True)
     graph_parser.set_defaults(func=cmd_graph)
+
+    extract_parser = subparsers.add_parser("extract", help="Extract evidence candidates from text, a file, or a URL.")
+    extract_parser.add_argument("path")
+    source_group = extract_parser.add_mutually_exclusive_group(required=True)
+    source_group.add_argument("--text")
+    source_group.add_argument("--file")
+    source_group.add_argument("--url")
+    extract_parser.add_argument("--source", required=True)
+    extract_parser.add_argument("--max-items", type=int, default=8)
+    extract_parser.add_argument("--min-score", type=int, default=1)
+    extract_parser.add_argument("--apply", action="store_true", help="Append extracted candidates to the signal card.")
+    extract_parser.set_defaults(func=cmd_extract)
 
     demo_parser = subparsers.add_parser("demo", help="Create a runnable NVDA demo signal.")
     demo_parser.add_argument("--out-dir", default=".")
@@ -125,6 +138,39 @@ def cmd_graph(args: argparse.Namespace) -> None:
     signal = load_signal(args.path)
     Path(args.out).write_text(render_html_graph(signal), encoding="utf-8")
     print(f"Wrote evidence graph: {args.out}")
+
+
+def cmd_extract(args: argparse.Namespace) -> None:
+    signal = load_signal(args.path)
+    text = read_source_text(text=args.text, file=args.file, url=args.url)
+    candidates = extract_evidence_candidates(
+        text,
+        max_items=args.max_items,
+        min_score=args.min_score,
+    )
+
+    if not candidates:
+        print("No evidence candidates found.")
+        return
+
+    for index, candidate in enumerate(candidates, start=1):
+        print(f"[{index}] {candidate.kind.value} | weight {candidate.weight:.1f} | score {candidate.score}")
+        print(candidate.text)
+        print()
+
+    if args.apply:
+        for candidate in candidates:
+            add_evidence(
+                signal,
+                text=candidate.text,
+                source=args.source,
+                kind=candidate.kind,
+                url=args.url,
+                observed_at=None,
+                weight=candidate.weight,
+            )
+        save_signal(signal, args.path)
+        print(f"Applied {len(candidates)} evidence candidates to {args.path}")
 
 
 def cmd_demo(args: argparse.Namespace) -> None:
